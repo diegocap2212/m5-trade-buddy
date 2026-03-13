@@ -23,6 +23,13 @@ function toChartTime(ts: number) {
   return Math.floor(ts / 1000) as any;
 }
 
+/** Deduplicate LineData by time, keeping last value */
+function dedupeLineData(data: LineData[]): LineData[] {
+  const map = new Map<number, LineData>();
+  for (const d of data) map.set(d.time as number, d);
+  return Array.from(map.values()).sort((a, b) => (a.time as number) - (b.time as number));
+}
+
 const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -142,15 +149,18 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
     });
 
     const ro = new ResizeObserver((entries) => {
+      if (!chartRef.current) return;
       const { width, height } = entries[0].contentRect;
-      chart.applyOptions({ width, height });
+      if (width > 0 && height > 0) {
+        chart.applyOptions({ width, height });
+      }
     });
     ro.observe(containerRef.current);
 
     return () => {
       ro.disconnect();
-      chart.remove();
       chartRef.current = null;
+      chart.remove();
     };
   }, []);
 
@@ -158,13 +168,13 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
   useEffect(() => {
     if (!chartRef.current || candles.length < 2) return;
 
-    const candleData: CandlestickData[] = candles.map((c) => ({
-      time: toChartTime(c.timestamp),
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    // Deduplicate by timestamp (keep last occurrence) to avoid "data must be asc ordered" error
+    const seen = new Map<number, CandlestickData>();
+    for (const c of candles) {
+      const time = toChartTime(c.timestamp);
+      seen.set(time, { time: time as any, open: c.open, high: c.high, low: c.low, close: c.close });
+    }
+    const candleData = Array.from(seen.values()).sort((a, b) => (a.time as number) - (b.time as number));
     candleSeriesRef.current?.setData(candleData);
 
     // EMA 9
@@ -173,7 +183,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
       time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
       value: v,
     }));
-    ema9Ref.current?.setData(ema9Data);
+    ema9Ref.current?.setData(dedupeLineData(ema9Data));
 
     // EMA 21
     if (candles.length >= 21) {
@@ -182,7 +192,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
         time: toChartTime(candles[candles.length - ema21Values.length + i].timestamp),
         value: v,
       }));
-      ema21Ref.current?.setData(ema21Data);
+      ema21Ref.current?.setData(dedupeLineData(ema21Data));
     }
 
     // Bollinger Bands
@@ -199,9 +209,9 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
         bbMiddle.push({ time, value: bb.middle });
         bbLower.push({ time, value: bb.lower });
       }
-      bbUpperRef.current?.setData(bbUpper);
-      bbMiddleRef.current?.setData(bbMiddle);
-      bbLowerRef.current?.setData(bbLower);
+      bbUpperRef.current?.setData(dedupeLineData(bbUpper));
+      bbMiddleRef.current?.setData(dedupeLineData(bbMiddle));
+      bbLowerRef.current?.setData(dedupeLineData(bbLower));
     }
 
     // VWAP
@@ -211,7 +221,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
       const vwap = calculateVWAP(slice);
       vwapData.push({ time: toChartTime(candles[i].timestamp), value: vwap });
     }
-    vwapRef.current?.setData(vwapData);
+    vwapRef.current?.setData(dedupeLineData(vwapData));
 
     // Signal markers on candlestick series
     const markers: any[] = [];
