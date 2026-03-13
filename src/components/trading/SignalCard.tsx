@@ -1,6 +1,8 @@
-import { ArrowUpCircle, ArrowDownCircle, Clock } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { SignalDirection } from '@/lib/trading-types';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import type { SignalDirection, MacroBias } from '@/lib/trading-types';
 
 interface SignalCardProps {
   direction: SignalDirection;
@@ -9,6 +11,11 @@ interface SignalCardProps {
   support: number;
   resistance: number;
   pattern: string;
+  ema200Bias?: MacroBias;
+  rsi?: number;
+  stochK?: number;
+  stochD?: number;
+  confluences?: string[];
 }
 
 const signalConfig = {
@@ -41,13 +48,46 @@ const signalConfig = {
   },
 };
 
-const SignalCard = ({ direction, confidence, price, support, resistance, pattern }: SignalCardProps) => {
+const biasConfig = {
+  BULL: { label: 'BULL', icon: TrendingUp, color: 'text-win', bg: 'bg-win/15 border-win/30' },
+  BEAR: { label: 'BEAR', icon: TrendingDown, color: 'text-loss', bg: 'bg-loss/15 border-loss/30' },
+  NEUTRAL: { label: 'NEUTRO', icon: Minus, color: 'text-pending', bg: 'bg-pending/15 border-pending/30' },
+};
+
+const SignalCard = ({
+  direction,
+  confidence,
+  price,
+  support,
+  resistance,
+  pattern,
+  ema200Bias = 'NEUTRAL',
+  rsi = 50,
+  stochK = 50,
+  stochD = 50,
+  confluences = [],
+}: SignalCardProps) => {
   const config = signalConfig[direction];
   const Icon = config.icon;
+  const bias = biasConfig[ema200Bias];
+  const BiasIcon = bias.icon;
 
   return (
     <Card className={`${config.bgClass} ${config.borderClass} ${config.glowClass} border-2 transition-all duration-500`}>
       <CardContent className="p-6 flex flex-col items-center gap-4">
+        {/* Macro Bias Badge */}
+        <div className="w-full flex items-center justify-between">
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${bias.bg}`}>
+            <BiasIcon className={`h-3 w-3 ${bias.color}`} />
+            <span className={`text-xs font-mono font-bold ${bias.color}`}>EMA200 {bias.label}</span>
+          </div>
+          {pattern && pattern !== 'Sem padrão claro' && (
+            <div className="px-2.5 py-1 bg-secondary rounded-full">
+              <span className={`text-xs font-mono font-semibold ${config.colorClass}`}>{pattern}</span>
+            </div>
+          )}
+        </div>
+
         {/* Signal */}
         <div className="flex flex-col items-center gap-2">
           <Icon className={`h-16 w-16 ${config.colorClass} pulse-signal`} />
@@ -74,6 +114,42 @@ const SignalCard = ({ direction, confidence, price, support, resistance, pattern
           </div>
         </div>
 
+        {/* RSI & Stochastic gauges */}
+        <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+          <div>
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>RSI(7)</span>
+              <span className={`font-mono ${rsi < 30 ? 'text-signal-call' : rsi > 70 ? 'text-signal-put' : 'text-foreground'}`}>
+                {rsi}
+              </span>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  rsi < 30 ? 'bg-signal-call' : rsi > 70 ? 'bg-signal-put' : 'bg-muted-foreground'
+                }`}
+                style={{ width: `${rsi}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>Stoch</span>
+              <span className={`font-mono ${stochK < 20 ? 'text-signal-call' : stochK > 80 ? 'text-signal-put' : 'text-foreground'}`}>
+                {stochK}/{stochD}
+              </span>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  stochK < 20 ? 'bg-signal-call' : stochK > 80 ? 'bg-signal-put' : 'bg-muted-foreground'
+                }`}
+                style={{ width: `${stochK}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Price levels */}
         <div className="grid grid-cols-3 gap-4 w-full max-w-sm text-center">
           <div>
@@ -90,11 +166,21 @@ const SignalCard = ({ direction, confidence, price, support, resistance, pattern
           </div>
         </div>
 
-        {/* Pattern */}
-        {pattern && (
-          <div className="px-3 py-1 bg-secondary rounded-full">
-            <span className="text-xs font-mono text-muted-foreground">Padrão: </span>
-            <span className={`text-xs font-mono font-semibold ${config.colorClass}`}>{pattern}</span>
+        {/* Confluences */}
+        {confluences.length > 0 && (
+          <div className="w-full">
+            <p className="text-xs text-muted-foreground mb-2">Confluências ({confluences.length})</p>
+            <div className="flex flex-wrap gap-1.5">
+              {confluences.map((c, i) => (
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className="text-xs font-mono border-border bg-secondary/50 text-muted-foreground"
+                >
+                  {c}
+                </Badge>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>
