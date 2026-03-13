@@ -23,6 +23,13 @@ function toChartTime(ts: number) {
   return Math.floor(ts / 1000) as any;
 }
 
+/** Deduplicate LineData by time, keeping last value */
+function dedupeLineData(data: LineData[]): LineData[] {
+  const map = new Map<number, LineData>();
+  for (const d of data) map.set(d.time as number, d);
+  return Array.from(map.values()).sort((a, b) => (a.time as number) - (b.time as number));
+}
+
 const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
