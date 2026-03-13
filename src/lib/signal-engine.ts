@@ -68,12 +68,9 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
   const rsiOverbought = rsi > 65;
 
   if (belowLower && rsiOversold) {
-    // CALL signal: exhaustion to the downside
     direction = 'CALL';
-    
-    // Confidence from band penetration depth + RSI extremity
     const bandPenetration = bb.lower > 0 ? ((bb.lower - price) / (atr || 1)) * 100 : 0;
-    const rsiExtremity = (35 - rsi) / 35; // 0 to 1
+    const rsiExtremity = (35 - rsi) / 35;
     confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço abaixo da Bollinger Inferior');
@@ -86,9 +83,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
     if (pattern?.bullish) confluences.push(`Padrão: ${pattern.name}`);
 
   } else if (aboveUpper && rsiOverbought) {
-    // PUT signal: exhaustion to the upside
     direction = 'PUT';
-
     const bandPenetration = bb.upper > 0 ? ((price - bb.upper) / (atr || 1)) * 100 : 0;
     const rsiExtremity = (rsi - 65) / 35;
     confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
@@ -103,7 +98,6 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
     if (pattern && !pattern.bullish) confluences.push(`Padrão: ${pattern.name}`);
   }
 
-  // Add informational confluences even for WAIT
   if (direction === 'WAIT') {
     confidence = 0;
     if (bb.squeeze) confluences.push('Bollinger Squeeze (aguardando rompimento)');
@@ -125,4 +119,74 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
     atr,
     confluences,
   };
+}
+
+export interface BacktestResult {
+  signals: import('./trading-types').TradingSignal[];
+  stats: { winsDirect: number; winsMG1: number; lossesReal: number };
+}
+
+/**
+ * Run the exhaustion reversal strategy on historical candles.
+ * For each candle i (from 20 to length-3), run analyzeMarket.
+ * Validate with candle i+1 (direct) and i+2 (MG1).
+ */
+export function backtestCandles(candles: CandleData[], asset: string): BacktestResult {
+  const signals: import('./trading-types').TradingSignal[] = [];
+  const stats = { winsDirect: 0, winsMG1: 0, lossesReal: 0 };
+
+  if (candles.length < 23) return { signals, stats };
+
+  for (let i = 20; i < candles.length - 2; i++) {
+    const slice = candles.slice(0, i + 1);
+    const analysis = analyzeMarket(slice, asset);
+    if (!analysis || analysis.direction === 'WAIT') continue;
+
+    const entryPrice = analysis.price;
+    const nextCandle = candles[i + 1];
+    const mg1Candle = candles[i + 2];
+
+    const isDirectWin = analysis.direction === 'CALL'
+      ? nextCandle.close > entryPrice
+      : nextCandle.close < entryPrice;
+
+    let result: 'WIN' | 'LOSS';
+
+    if (isDirectWin) {
+      result = 'WIN';
+      stats.winsDirect++;
+    } else {
+      const isMG1Win = analysis.direction === 'CALL'
+        ? mg1Candle.close > nextCandle.close
+        : mg1Candle.close < nextCandle.close;
+
+      if (isMG1Win) {
+        result = 'WIN';
+        stats.winsMG1++;
+      } else {
+        result = 'LOSS';
+        stats.lossesReal++;
+      }
+    }
+
+    signals.push({
+      id: crypto.randomUUID(),
+      asset,
+      direction: analysis.direction,
+      confidence: analysis.confidence,
+      price: entryPrice,
+      support: analysis.support,
+      resistance: analysis.resistance,
+      pattern: analysis.pattern,
+      timestamp: new Date(candles[i].timestamp),
+      result,
+      ema200Bias: analysis.ema200Bias,
+      rsi: analysis.rsi,
+      stochK: analysis.stochK,
+      stochD: analysis.stochD,
+      confluences: analysis.confluences,
+    });
+  }
+
+  return { signals, stats };
 }

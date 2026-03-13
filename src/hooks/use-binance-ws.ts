@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CandleData, Timeframe } from '@/lib/trading-types';
 import { getBinanceStreamUrl, getBinanceSymbol, getBinanceInterval } from '@/lib/binance-symbols';
 
-const CANDLE_BUFFER = 40;
+const CANDLE_BUFFER = 200;
 const RECONNECT_DELAY = 3000;
 const MAX_RECONNECT_DELAY = 30000;
 
