@@ -101,8 +101,10 @@ const Index = () => {
         <OpportunityBanner
           opportunities={opportunities}
           scanning={scanning}
-          onSwitchAsset={setSelectedAsset}
+          onSwitchAsset={handleSwitchAsset}
           onDismiss={dismissOpportunity}
+          pinnedOpportunity={pinnedOpportunity}
+          onDismissPinned={handleDismissPinned}
         />
 
         {/* Main Grid */}
