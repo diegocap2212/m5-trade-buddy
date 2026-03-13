@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { TradingSignal, CandleData } from '@/lib/trading-types';
+import { useState, useEffect } from 'react';
+import type { TradingSignal, CandleData, Timeframe } from '@/lib/trading-types';
+import { CRYPTO_ASSETS } from '@/lib/trading-types';
 import { analyzeMarket } from '@/lib/signal-engine';
 
 function generateMockCandle(basePrice: number): CandleData {
@@ -12,24 +13,17 @@ function generateMockCandle(basePrice: number): CandleData {
   return { open, high, low, close, timestamp: Date.now(), volume };
 }
 
-const BASE_PRICES: Record<string, number> = {
-  'EUR/USD': 1.08750, 'GBP/USD': 1.27200, 'USD/JPY': 149.500,
-  'AUD/USD': 0.65400, 'USD/CAD': 1.36200, 'EUR/GBP': 0.85500,
-  'EUR/JPY': 162.600, 'GBP/JPY': 190.100, 'NZD/USD': 0.61200,
-  'USD/CHF': 0.88100,
-  'BTC/USD': 93575.5, 'ETH/USD': 3337.28, 'SOL/USD': 189.63,
-  'BNB/USD': 695.40, 'XRP/USD': 2.18, 'LTC/USD': 105.00,
-  'EUR/USD (OTC)': 1.08700, 'GBP/USD (OTC)': 1.27100, 'USD/JPY (OTC)': 149.400,
-  'AUD/USD (OTC)': 0.65300, 'EUR/GBP (OTC)': 0.85400, 'GBP/JPY (OTC)': 189.900,
-};
-
-export function useTradingEngine(selectedAsset: string) {
+export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [currentSignal, setCurrentSignal] = useState<TradingSignal | null>(null);
   const [signalHistory, setSignalHistory] = useState<TradingSignal[]>([]);
   const [connected, setConnected] = useState(false);
 
-  const basePrice = BASE_PRICES[selectedAsset] || 1.0;
+  const asset = CRYPTO_ASSETS.find(a => a.pair === selectedAsset);
+  const basePrice = asset?.basePrice || 1.0;
+
+  // Update interval: M1 = 5s, M5 = 10s
+  const updateInterval = timeframe === 'M1' ? 5000 : 10000;
 
   useEffect(() => {
     const timer = setTimeout(() => setConnected(true), 1500);
@@ -48,7 +42,7 @@ export function useTradingEngine(selectedAsset: string) {
     setCandles(initial);
   }, [basePrice, selectedAsset]);
 
-  // Update signal every 10 seconds
+  // Update signal
   useEffect(() => {
     if (candles.length === 0) return;
 
@@ -81,9 +75,9 @@ export function useTradingEngine(selectedAsset: string) {
     };
 
     updateSignal();
-    const interval = setInterval(updateSignal, 10000);
+    const interval = setInterval(updateSignal, updateInterval);
     return () => clearInterval(interval);
-  }, [candles.length > 0, selectedAsset]);
+  }, [candles.length > 0, selectedAsset, updateInterval]);
 
   // Resolve signals
   useEffect(() => {
@@ -96,7 +90,7 @@ export function useTradingEngine(selectedAsset: string) {
           };
           return [withResult, ...prev].slice(0, 50);
         });
-      }, 15000);
+      }, timeframe === 'M1' ? 8000 : 15000);
       return () => clearTimeout(timer);
     }
   }, [currentSignal?.id]);
@@ -106,7 +100,6 @@ export function useTradingEngine(selectedAsset: string) {
   const decided = wins + losses;
   const winRate = decided > 0 ? (wins / decided) * 100 : 0;
 
-  // Consecutive losses
   let consecutiveLosses = 0;
   for (const s of signalHistory) {
     if (s.result === 'LOSS') consecutiveLosses++;

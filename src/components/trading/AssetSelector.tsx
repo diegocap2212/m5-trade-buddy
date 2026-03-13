@@ -1,13 +1,11 @@
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FOREX_PAIRS, CRYPTO_PAIRS, OTC_PAIRS } from '@/lib/trading-types';
+import { CRYPTO_ASSETS } from '@/lib/trading-types';
 
 interface AssetSelectorProps {
   value: string;
@@ -17,34 +15,18 @@ interface AssetSelectorProps {
 const AssetSelector = ({ value, onValueChange }: AssetSelectorProps) => {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="w-[160px] bg-secondary border-border font-mono text-sm h-9">
-        <SelectValue placeholder="Par ativo" />
+      <SelectTrigger className="w-[200px] bg-secondary border-border font-mono text-sm h-9">
+        <SelectValue placeholder="Selecionar ativo" />
       </SelectTrigger>
       <SelectContent className="bg-popover border-border">
-        <SelectGroup>
-          <SelectLabel className="text-muted-foreground text-xs">Forex</SelectLabel>
-          {FOREX_PAIRS.map((pair) => (
-            <SelectItem key={pair} value={pair} className="font-mono text-sm">
-              {pair}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-        <SelectGroup>
-          <SelectLabel className="text-muted-foreground text-xs">Cripto</SelectLabel>
-          {CRYPTO_PAIRS.map((pair) => (
-            <SelectItem key={pair} value={pair} className="font-mono text-sm">
-              {pair}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-        <SelectGroup>
-          <SelectLabel className="text-muted-foreground text-xs">OTC</SelectLabel>
-          {OTC_PAIRS.map((pair) => (
-            <SelectItem key={pair} value={pair} className="font-mono text-sm">
-              {pair}
-            </SelectItem>
-          ))}
-        </SelectGroup>
+        {CRYPTO_ASSETS.map((asset) => (
+          <SelectItem key={asset.pair} value={asset.pair} className="font-mono text-sm">
+            <span className="flex items-center justify-between gap-3 w-full">
+              <span>{asset.pair}</span>
+              <span className="text-xs text-muted-foreground">{asset.payout}%</span>
+            </span>
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
