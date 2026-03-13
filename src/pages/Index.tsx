@@ -43,6 +43,9 @@ const Index = () => {
           candles={candles}
           currentSignal={currentSignal}
           signalHistory={signalHistory}
+          entryTime={entryTime}
+          martingaleTime={martingaleTime}
+          consecutiveLosses={consecutiveLosses}
         />
 
         {/* Session Stats */}
