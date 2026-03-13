@@ -119,9 +119,11 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsDirect: prev.winsDirect + 1 }));
         pendingValidation.current = null;
+        playWinSound();
       } else {
         pv.state = 'waiting_mg1';
         pv.firstCandleClose = closePrice;
+        playMG1Alert();
       }
     } else if (pv.state === 'waiting_mg1') {
       const candlesSinceEntry = candles.filter(c => c.timestamp > pv.entryCandleTimestamp);
