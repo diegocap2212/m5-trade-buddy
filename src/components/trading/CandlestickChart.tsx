@@ -230,25 +230,34 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     // Signal markers on candlestick series
     const markers: any[] = [];
 
-    // Add historical signals
+    // Add historical signals with WIN/LOSS result
     for (const sig of signalHistory) {
       if (sig.direction === 'CALL' || sig.direction === 'PUT') {
+        const isWin = sig.result === 'WIN';
+        const isLoss = sig.result === 'LOSS';
+        const resultLabel = isWin ? '✓' : isLoss ? '✗' : '?';
+        const color = isWin
+          ? 'hsl(142, 71%, 45%)'
+          : isLoss
+            ? 'hsl(0, 84%, 60%)'
+            : 'hsl(45, 93%, 58%)';
+
         markers.push({
           time: toChartTime(sig.timestamp.getTime()),
           position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-          color: sig.direction === 'CALL' ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)',
+          color,
           shape: sig.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
-          text: `${sig.direction} ${sig.confidence}%`,
+          text: `${sig.direction} ${resultLabel}`,
         });
       }
     }
 
-    // Add current signal
+    // Add current signal (pending)
     if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
       markers.push({
         time: toChartTime(currentSignal.timestamp.getTime()),
         position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-        color: currentSignal.direction === 'CALL' ? 'hsl(142, 71%, 55%)' : 'hsl(0, 84%, 65%)',
+        color: 'hsl(45, 93%, 58%)',
         shape: currentSignal.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
         text: `${currentSignal.direction} ${currentSignal.confidence}%`,
       });
