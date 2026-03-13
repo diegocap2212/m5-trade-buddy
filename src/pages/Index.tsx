@@ -44,6 +44,13 @@ const Index = () => {
           <div className="flex items-center gap-3">
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
             <CandleCountdown timeframe={timeframe} onTimeframeChange={setTimeframe} />
+            <button
+              onClick={toggleMute}
+              className="h-8 w-8 rounded-lg border border-border bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors"
+              title={soundMuted ? 'Ativar som' : 'Silenciar'}
+            >
+              {soundMuted ? <VolumeX className="h-3.5 w-3.5 text-muted-foreground" /> : <Volume2 className="h-3.5 w-3.5 text-primary" />}
+            </button>
             <ConnectionStatus connected={connected} status={connectionStatus} />
           </div>
         </header>
