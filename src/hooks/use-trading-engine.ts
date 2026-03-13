@@ -322,5 +322,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     mg1Stats,
     sessionHistory,
     commitOpportunity,
+    dataSourceLabel,
   };
 }
