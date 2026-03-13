@@ -210,9 +210,10 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       if (!validationCandle) return;
 
       const closePrice = validationCandle.close;
-      const isWin = pv.signal.direction === 'CALL'
+      const isDoji = closePrice === pv.entryPrice;
+      const isWin = !isDoji && (pv.signal.direction === 'CALL'
         ? closePrice > pv.entryPrice
-        : closePrice < pv.entryPrice;
+        : closePrice < pv.entryPrice);
 
       if (isWin) {
         const updates = { result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail, resolvedTimestamp: new Date(validationCandle.timestamp) };
@@ -222,10 +223,15 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         recordResult('WIN_DIRECT', selectedAsset, timeframe);
         pendingValidation.current = null;
         playWinSound();
+        console.log(`[Engine] ✅ WIN_DIRECT for ${pv.signal.asset} ${pv.signal.direction} | entry=${pv.entryPrice} close=${closePrice}`);
       } else {
+        // LOSS on first candle → go to MG1
         pv.state = 'waiting_mg1';
         pv.firstCandleClose = closePrice;
+        // Update signal to show it's in MG1 phase
+        updateSignalById(pv.signal.id, { result: 'PENDING' as const, resultDetail: 'LOSS_DIRECT' as ResultDetail });
         playMG1Alert();
+        console.log(`[Engine] ⚠️ LOSS_DIRECT → MG1 for ${pv.signal.asset} ${pv.signal.direction} | entry=${pv.entryPrice} close=${closePrice}`);
       }
     } else if (pv.state === 'waiting_mg1') {
       // Find two closed candles after entry
@@ -233,9 +239,10 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       if (candlesAfterEntry.length < 2) return;
 
       const mg1Candle = candlesAfterEntry[1];
+      const mg1EntryPrice = pv.firstCandleClose ?? pv.entryPrice;
       const isWinMG1 = pv.signal.direction === 'CALL'
-        ? mg1Candle.close > (pv.firstCandleClose ?? pv.entryPrice)
-        : mg1Candle.close < (pv.firstCandleClose ?? pv.entryPrice);
+        ? mg1Candle.close > mg1EntryPrice
+        : mg1Candle.close < mg1EntryPrice;
 
       if (isWinMG1) {
         const updates = { result: 'WIN' as const, resultDetail: 'WIN_MG1' as ResultDetail, resolvedTimestamp: new Date(mg1Candle.timestamp) };
@@ -244,6 +251,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         setMG1Stats(prev => ({ ...prev, winsMG1: prev.winsMG1 + 1 }));
         recordResult('WIN_MG1', selectedAsset, timeframe);
         playWinSound();
+        console.log(`[Engine] ⚡ WIN_MG1 for ${pv.signal.asset} ${pv.signal.direction} | mg1Entry=${mg1EntryPrice} close=${mg1Candle.close}`);
       } else {
         const updates = { result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail, resolvedTimestamp: new Date(mg1Candle.timestamp) };
         updateSignalById(pv.signal.id, updates);
@@ -251,10 +259,11 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
         recordResult('LOSS_MG1', selectedAsset, timeframe);
         playLossSound();
+        console.log(`[Engine] 💀 LOSS_MG1 for ${pv.signal.asset} ${pv.signal.direction} | mg1Entry=${mg1EntryPrice} close=${mg1Candle.close}`);
       }
       pendingValidation.current = null;
     }
-  }, [candles, timeframe]);
+  }, [candles, timeframe, selectedAsset, updateSignalById]);
 
   // Backtest
   useEffect(() => {

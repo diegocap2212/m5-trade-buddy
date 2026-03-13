@@ -404,6 +404,30 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+          {timeframe && onTimeframeChange && (
+            <div className="flex bg-secondary rounded-md overflow-hidden border border-border ml-2">
+              <button
+                onClick={() => onTimeframeChange('M1')}
+                className={`px-2 py-1 text-[10px] font-mono font-bold transition-colors ${
+                  timeframe === 'M1'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                M1
+              </button>
+              <button
+                onClick={() => onTimeframeChange('M5')}
+                className={`px-2 py-1 text-[10px] font-mono font-bold transition-colors ${
+                  timeframe === 'M5'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                M5
+              </button>
+            </div>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
