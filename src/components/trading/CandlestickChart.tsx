@@ -235,14 +235,18 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
 
     for (const sig of recentHistory) {
       if (sig.direction === 'CALL' || sig.direction === 'PUT') {
+        const rd = sig.resultDetail;
         const isWin = sig.result === 'WIN';
         const isLoss = sig.result === 'LOSS';
-        const resultLabel = isWin ? '✓' : isLoss ? '✗' : '?';
-        const color = isWin
-          ? 'hsl(142, 71%, 45%)'
-          : isLoss
-            ? 'hsl(0, 84%, 60%)'
-            : 'hsl(45, 93%, 58%)';
+
+        let resultLabel = '?';
+        let color = 'hsl(45, 93%, 58%)';
+        if (rd === 'WIN_DIRECT') { resultLabel = '✓'; color = 'hsl(142, 71%, 45%)'; }
+        else if (rd === 'WIN_MG1') { resultLabel = 'MG✓'; color = 'hsl(45, 93%, 58%)'; }
+        else if (rd === 'LOSS_MG1') { resultLabel = 'MG✗'; color = 'hsl(0, 84%, 60%)'; }
+        else if (rd === 'LOSS_DIRECT') { resultLabel = '✗'; color = 'hsl(0, 84%, 60%)'; }
+        else if (isWin) { resultLabel = '✓'; color = 'hsl(142, 71%, 45%)'; }
+        else if (isLoss) { resultLabel = '✗'; color = 'hsl(0, 84%, 60%)'; }
 
         markers.push({
           time: toChartTime(sig.timestamp.getTime()),
