@@ -190,6 +190,7 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
     // Set cooldown: skip next 3 candles (entry + validation + MG1)
     cooldownUntil = i + 3;
 
+    const resolvedCandleIndex = resultDetail === 'WIN_DIRECT' ? i + 1 : i + 2;
     signals.push({
       id: crypto.randomUUID(),
       asset,
@@ -202,6 +203,7 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
       timestamp: new Date(candles[i].timestamp),
       result,
       resultDetail,
+      resolvedTimestamp: new Date(candles[resolvedCandleIndex].timestamp),
       ema200Bias: analysis.ema200Bias,
       rsi: analysis.rsi,
       stochK: analysis.stochK,

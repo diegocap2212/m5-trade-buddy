@@ -23,6 +23,7 @@ export interface TradingSignal {
   stochD?: number;
   confluences?: string[];
   resultDetail?: ResultDetail;
+  resolvedTimestamp?: Date;
 }
 
 export interface CandleData {
