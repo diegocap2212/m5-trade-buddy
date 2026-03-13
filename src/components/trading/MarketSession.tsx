@@ -78,7 +78,7 @@ const MarketSession = () => {
       <div className="ml-auto flex items-center gap-1">
         <Clock className="h-3 w-3 text-muted-foreground" />
         <span className="text-xs font-mono text-muted-foreground">
-          {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })} BRT
         </span>
       </div>
     </div>
