@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
+import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
 
 export interface MG1Stats {
   winsDirect: number;
@@ -85,7 +86,10 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     };
 
     setCurrentSignal(signal);
-
+    
+    // Sound alert for new signal
+    if (signal.direction === 'CALL') playCallAlert();
+    else if (signal.direction === 'PUT') playPutAlert();
     pendingValidation.current = {
       signal,
       entryPrice: analysis.price,
@@ -115,9 +119,11 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsDirect: prev.winsDirect + 1 }));
         pendingValidation.current = null;
+        playWinSound();
       } else {
         pv.state = 'waiting_mg1';
         pv.firstCandleClose = closePrice;
+        playMG1Alert();
       }
     } else if (pv.state === 'waiting_mg1') {
       const candlesSinceEntry = candles.filter(c => c.timestamp > pv.entryCandleTimestamp);
@@ -132,10 +138,12 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_MG1' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsMG1: prev.winsMG1 + 1 }));
+        playWinSound();
       } else {
         const resolvedSignal = { ...pv.signal, result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
+        playLossSound();
       }
       pendingValidation.current = null;
     }
