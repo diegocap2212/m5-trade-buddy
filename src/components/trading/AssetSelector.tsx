@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FOREX_PAIRS, OTC_PAIRS } from '@/lib/trading-types';
+import { FOREX_PAIRS, CRYPTO_PAIRS, OTC_PAIRS } from '@/lib/trading-types';
 
 interface AssetSelectorProps {
   value: string;
@@ -24,6 +24,14 @@ const AssetSelector = ({ value, onValueChange }: AssetSelectorProps) => {
         <SelectGroup>
           <SelectLabel className="text-muted-foreground text-xs">Forex</SelectLabel>
           {FOREX_PAIRS.map((pair) => (
+            <SelectItem key={pair} value={pair} className="font-mono text-sm">
+              {pair}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+        <SelectGroup>
+          <SelectLabel className="text-muted-foreground text-xs">Cripto</SelectLabel>
+          {CRYPTO_PAIRS.map((pair) => (
             <SelectItem key={pair} value={pair} className="font-mono text-sm">
               {pair}
             </SelectItem>
