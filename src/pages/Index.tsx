@@ -31,6 +31,7 @@ const Index = () => {
   };
   const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats } =
     useTradingEngine(selectedAsset, timeframe);
+  const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
 
   return (
     <div className="min-h-screen bg-background p-3 md:p-5">
