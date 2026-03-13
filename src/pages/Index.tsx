@@ -32,7 +32,7 @@ const Index = () => {
     setSoundMuted(next);
     setMuted(next);
   };
-  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity } =
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity, dataSourceLabel } =
     useTradingEngine(selectedAsset, timeframe);
   const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
 
