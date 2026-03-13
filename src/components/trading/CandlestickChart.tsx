@@ -285,14 +285,20 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     prevLastSignalIdRef.current = lastSigId;
 
     if (markersChanged) {
+      // Build a set of valid chart times from current candles
+      const validTimes = new Set<number>();
+      for (const c of candles) validTimes.add(toChartTime(c.timestamp));
+
       const markers: any[] = [];
       const recentHistory = signalHistory.slice(-10);
 
       for (const sig of recentHistory) {
         if (sig.direction === 'CALL' || sig.direction === 'PUT') {
+          const t = toChartTime(sig.timestamp.getTime());
+          if (!validTimes.has(t)) continue; // skip markers outside candle range
           const style = getMarkerStyle(sig, false);
           markers.push({
-            time: toChartTime(sig.timestamp.getTime()),
+            time: t,
             position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
             color: style.color,
             shape: style.shape,
@@ -302,17 +308,20 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
         }
       }
 
-      // Active signal — larger, pulsing-like marker
+      // Active signal — larger marker (only if time exists in candles)
       if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
-        const style = getMarkerStyle(currentSignal, true);
-        markers.push({
-          time: toChartTime(currentSignal.timestamp.getTime()),
-          position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-          color: style.color,
-          shape: style.shape,
-          text: style.text,
-          size: 3,
-        });
+        const t = toChartTime(currentSignal.timestamp.getTime());
+        if (validTimes.has(t)) {
+          const style = getMarkerStyle(currentSignal, true);
+          markers.push({
+            time: t,
+            position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+            color: style.color,
+            shape: style.shape,
+            text: style.text,
+            size: 3,
+          });
+        }
       }
 
       markers.sort((a, b) => a.time - b.time);
