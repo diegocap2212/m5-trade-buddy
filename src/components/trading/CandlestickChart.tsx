@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
 import type { CandleData, TradingSignal } from '@/lib/trading-types';
 import { calculateEMA, calculateBollingerBands, calculateVWAP } from '@/lib/trading-indicators';
+import EntryTimer from './EntryTimer';
 
 interface SignalMarker {
   id: string;
@@ -17,6 +18,9 @@ interface CandlestickChartProps {
   candles: CandleData[];
   currentSignal?: TradingSignal | null;
   signalHistory?: TradingSignal[];
+  entryTime?: Date;
+  martingaleTime?: Date | null;
+  consecutiveLosses?: number;
 }
 
 function toChartTime(ts: number) {
@@ -30,7 +34,7 @@ function dedupeLineData(data: LineData[]): LineData[] {
   return Array.from(map.values()).sort((a, b) => (a.time as number) - (b.time as number));
 }
 
-const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: CandlestickChartProps) => {
+const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0 }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -311,6 +315,13 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
             {activeSignal.ema200Bias && <span>EMA200 {activeSignal.ema200Bias}</span>}
             {activeSignal.confluences && <span>{activeSignal.confluences.length} confluências</span>}
           </div>
+          {entryTime && (
+            <EntryTimer
+              entryTime={entryTime}
+              martingaleTime={consecutiveLosses >= 1 ? martingaleTime : null}
+              direction={activeSignal.direction as 'CALL' | 'PUT'}
+            />
+          )}
         </div>
       )}
 

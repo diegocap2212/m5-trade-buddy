@@ -67,6 +67,13 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     else break;
   }
 
+  // Calculate entry times based on timeframe
+  const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
+  const now = Date.now();
+  const nextCandleClose = Math.ceil(now / intervalMs) * intervalMs;
+  const entryTime = new Date(nextCandleClose - 1000); // 1s before candle close
+  const martingaleTime = consecutiveLosses >= 1 ? new Date(nextCandleClose + intervalMs - 1000) : null;
+
   return {
     currentSignal,
     signalHistory,
@@ -78,5 +85,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     totalSignals: signalHistory.length,
     winRate,
     consecutiveLosses,
+    entryTime,
+    martingaleTime,
   };
 }
