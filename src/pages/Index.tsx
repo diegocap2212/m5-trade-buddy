@@ -9,11 +9,13 @@ import RiskManager from '@/components/trading/RiskManager';
 import MarketSession from '@/components/trading/MarketSession';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { Activity } from 'lucide-react';
+import type { Timeframe } from '@/lib/trading-types';
 
 const Index = () => {
-  const [selectedAsset, setSelectedAsset] = useState('EUR/USD');
+  const [selectedAsset, setSelectedAsset] = useState('BTC/USD');
+  const [timeframe, setTimeframe] = useState<Timeframe>('M5');
   const { currentSignal, signalHistory, connected, wins, losses, totalSignals, winRate, consecutiveLosses } =
-    useTradingEngine(selectedAsset);
+    useTradingEngine(selectedAsset, timeframe);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
@@ -28,7 +30,7 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-4">
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
-            <CandleCountdown />
+            <CandleCountdown timeframe={timeframe} onTimeframeChange={setTimeframe} />
             <ConnectionStatus connected={connected} />
           </div>
         </header>
