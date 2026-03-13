@@ -5,6 +5,8 @@
  */
 import type { CandleData, Timeframe } from './trading-types';
 
+export type ForexDataSource = 'simulated' | 'twelvedata';
+
 const FOREX_BASE_PRICES: Record<string, number> = {
   'EUR/USD': 1.0850, 'EUR/GBP': 0.8580, 'AUD/JPY': 97.50, 'NZD/USD': 0.5920,
   'EUR/JPY': 162.50, 'GBP/USD': 1.2650, 'AUD/CAD': 0.8950, 'USD/CAD': 1.3650,
@@ -25,10 +27,10 @@ function getVolatility(pair: string): number {
 interface CacheEntry {
   candles: CandleData[];
   lastPrice: number;
-  generatedAt: number; // timestamp of when historical candles were seeded
+  generatedAt: number;
+  source: ForexDataSource;
 }
 
-// Key = "pair_timeframe"
 const cache = new Map<string, CacheEntry>();
 
 function cacheKey(pair: string, timeframe: Timeframe) {
@@ -67,10 +69,6 @@ export function generateHistoricalCandles(pair: string, timeframe: Timeframe, co
   return candles;
 }
 
-/**
- * Get or create cached candles for a forex pair.
- * The first call generates historical data; subsequent calls return the same series.
- */
 export function getOrCreateForexCandles(pair: string, timeframe: Timeframe, count = 50): CandleData[] {
   const key = cacheKey(pair, timeframe);
   const existing = cache.get(key);
@@ -79,33 +77,41 @@ export function getOrCreateForexCandles(pair: string, timeframe: Timeframe, coun
     return existing.candles.slice(-count);
   }
 
-  // Generate fresh historical candles and cache
   const candles = generateHistoricalCandles(pair, timeframe, count);
   const lastPrice = candles[candles.length - 1].close;
-  cache.set(key, { candles, lastPrice, generatedAt: Date.now() });
+  cache.set(key, { candles, lastPrice, generatedAt: Date.now(), source: 'simulated' });
   return candles;
 }
 
-/**
- * Get a snapshot of cached candles for scanner use (read-only).
- * Returns empty array if pair hasn't been cached yet — scanner will generate & cache.
- */
 export function getForexSnapshot(pair: string, timeframe: Timeframe, count = 50): CandleData[] {
   return getOrCreateForexCandles(pair, timeframe, count);
 }
 
-/**
- * Update the cache with the latest candles (called by useForexData polling).
- */
-export function updateForexCache(pair: string, timeframe: Timeframe, candles: CandleData[]) {
+export function getForexCacheSource(pair: string, timeframe: Timeframe): ForexDataSource {
   const key = cacheKey(pair, timeframe);
-  const lastPrice = candles.length > 0 ? candles[candles.length - 1].close : (FOREX_BASE_PRICES[pair] ?? 1);
-  cache.set(key, { candles: [...candles], lastPrice, generatedAt: Date.now() });
+  return cache.get(key)?.source ?? 'simulated';
 }
 
-/**
- * Get the last cached price for a pair (used by useForexData initialization).
- */
+export function setForexCacheSource(pair: string, timeframe: Timeframe, source: ForexDataSource) {
+  const key = cacheKey(pair, timeframe);
+  const existing = cache.get(key);
+  if (existing) {
+    existing.source = source;
+  }
+}
+
+export function updateForexCache(pair: string, timeframe: Timeframe, candles: CandleData[]) {
+  const key = cacheKey(pair, timeframe);
+  const existing = cache.get(key);
+  const lastPrice = candles.length > 0 ? candles[candles.length - 1].close : (FOREX_BASE_PRICES[pair] ?? 1);
+  cache.set(key, {
+    candles: [...candles],
+    lastPrice,
+    generatedAt: Date.now(),
+    source: existing?.source ?? 'simulated',
+  });
+}
+
 export function getCachedLastPrice(pair: string, timeframe: Timeframe): number | null {
   const key = cacheKey(pair, timeframe);
   return cache.get(key)?.lastPrice ?? null;

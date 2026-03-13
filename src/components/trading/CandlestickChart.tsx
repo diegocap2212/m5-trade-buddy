@@ -5,6 +5,7 @@ import { calculateEMA, calculateBollingerBands } from '@/lib/trading-indicators'
 import { Lock, Unlock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EntryTimer from './EntryTimer';
+import type { DataSourceLabel } from '@/hooks/use-market-data';
 
 import type { Timeframe } from '@/lib/trading-types';
 
@@ -17,6 +18,7 @@ interface CandlestickChartProps {
   consecutiveLosses?: number;
   timeframe?: Timeframe;
   onTimeframeChange?: (tf: Timeframe) => void;
+  dataSourceLabel?: DataSourceLabel;
 }
 
 /** Convert ms timestamp to lightweight-charts time in São Paulo (BRT) timezone */
@@ -107,7 +109,13 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   return MARKER_CONFIG.PENDING[dir];
 }
 
-const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0, timeframe, onTimeframeChange }: CandlestickChartProps) => {
+const DATA_SOURCE_LABELS: Record<string, { label: string; color: string }> = {
+  binance: { label: 'BINANCE LIVE', color: 'text-[#f0b90b]' },
+  twelvedata: { label: 'TWELVE DATA', color: 'text-[#00e676]' },
+  simulated: { label: 'SIMULADO', color: 'text-[#ff1744]' },
+};
+
+const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0, timeframe, onTimeframeChange, dataSourceLabel = 'binance' }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -399,11 +407,20 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
 
   const activeSignal = currentSignal && currentSignal.direction !== 'WAIT' ? currentSignal : null;
 
+  const sourceInfo = DATA_SOURCE_LABELS[dataSourceLabel] || DATA_SOURCE_LABELS.simulated;
+  const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+  const now = new Date();
+  const utcStr = now.toISOString().slice(11, 19);
+  const brtStr = new Date(now.getTime() - 3 * 3600_000).toISOString().slice(11, 19);
+
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+          <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border border-border ${sourceInfo.color}`}>
+            {sourceInfo.label}
+          </span>
           {timeframe && onTimeframeChange && (
             <div className="flex bg-secondary rounded-md overflow-hidden border border-border ml-2">
               <button
@@ -450,6 +467,15 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
+          {lastCandle && (
+            <span className="text-foreground font-bold mr-1">
+              {lastCandle.close.toFixed(lastCandle.close > 50 ? 2 : 5)}
+            </span>
+          )}
+          <span className="text-[9px] opacity-70" title="UTC / BRT">
+            {utcStr} UTC | {brtStr} BRT
+          </span>
+          <span className="w-px h-3 bg-border" />
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#ffd600' }} /> EMA9
           </span>

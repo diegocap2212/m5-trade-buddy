@@ -32,7 +32,7 @@ const Index = () => {
     setSoundMuted(next);
     setMuted(next);
   };
-  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity } =
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity, dataSourceLabel } =
     useTradingEngine(selectedAsset, timeframe);
   const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
 
@@ -142,6 +142,7 @@ const Index = () => {
               consecutiveLosses={consecutiveLosses}
               timeframe={timeframe}
               onTimeframeChange={setTimeframe}
+              dataSourceLabel={dataSourceLabel}
             />
           </div>
 
@@ -183,7 +184,7 @@ const Index = () => {
         <GlobalAssertiveness refreshTrigger={signalHistory.length} />
 
         <p className="text-center font-mono text-[10px] text-muted-foreground/50 py-1">
-          Dados em tempo real via Binance • Motor de 3 camadas com confluência
+          Crypto: Binance em tempo real • Forex: Twelve Data API (requer key) ou simulado
         </p>
       </div>
     </div>
