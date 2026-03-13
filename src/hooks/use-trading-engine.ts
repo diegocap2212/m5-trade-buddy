@@ -10,6 +10,8 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
   const { candles, status } = useBinanceWebSocket(selectedAsset, timeframe);
   const connected = status === 'connected';
+  const candleCount = candles.length;
+  const lastClose = candles.length > 0 ? candles[candles.length - 1].close : 0;
 
   // Analyze market whenever candles update
   useEffect(() => {
