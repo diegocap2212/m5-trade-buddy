@@ -175,6 +175,9 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
       }
     }
 
+    // Set cooldown: skip next 3 candles (entry + validation + MG1)
+    cooldownUntil = i + 3;
+
     signals.push({
       id: crypto.randomUUID(),
       asset,
