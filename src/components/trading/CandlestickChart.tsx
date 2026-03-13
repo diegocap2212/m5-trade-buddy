@@ -5,6 +5,7 @@ import { calculateEMA, calculateBollingerBands } from '@/lib/trading-indicators'
 import { Lock, Unlock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EntryTimer from './EntryTimer';
+import type { DataSourceLabel } from '@/hooks/use-market-data';
 
 import type { Timeframe } from '@/lib/trading-types';
 
