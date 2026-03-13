@@ -3,6 +3,7 @@ import AssetSelector from '@/components/trading/AssetSelector';
 import CandleCountdown from '@/components/trading/CandleCountdown';
 import ConnectionStatus from '@/components/trading/ConnectionStatus';
 import SignalCard from '@/components/trading/SignalCard';
+import CandlestickChart from '@/components/trading/CandlestickChart';
 import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
 import RiskManager from '@/components/trading/RiskManager';
