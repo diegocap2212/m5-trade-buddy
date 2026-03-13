@@ -72,6 +72,12 @@ const OpportunityItem = ({
             RSI {opp.analysis.rsi}
           </span>
           <span>{opp.analysis.pattern}</span>
+          <span className="px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-bold">
+            {timeframe}
+          </span>
+          <span className="px-1.5 py-0.5 rounded bg-background/50 border border-border text-muted-foreground">
+            ⏱ {getEntryTime(timeframe)}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-2">
