@@ -7,6 +7,7 @@ import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
 import RiskManager from '@/components/trading/RiskManager';
 import MarketSession from '@/components/trading/MarketSession';
+import GlobalAssertiveness from '@/components/trading/GlobalAssertiveness';
 import OperatingModeToggle from '@/components/trading/OperatingModeToggle';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { Activity, Volume2, VolumeX } from 'lucide-react';
@@ -110,6 +111,8 @@ const Index = () => {
             />
           </div>
         </div>
+
+        <GlobalAssertiveness refreshTrigger={signalHistory.length} />
 
         <p className="text-center font-mono text-[10px] text-muted-foreground/50 py-1">
           Dados em tempo real via Binance • Motor de 3 camadas com confluência
