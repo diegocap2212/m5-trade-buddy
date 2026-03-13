@@ -15,6 +15,13 @@ import { isMuted, setMuted } from '@/lib/sound-alerts';
 const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('BTC/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M5');
+  const [soundMuted, setSoundMuted] = useState(false);
+
+  const toggleMute = () => {
+    const next = !soundMuted;
+    setSoundMuted(next);
+    setMuted(next);
+  };
   const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats } =
     useTradingEngine(selectedAsset, timeframe);
 
