@@ -442,7 +442,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
         </div>
       )}
 
-      <div ref={containerRef} className="w-full h-[520px]" />
+      <div ref={containerRef} className="w-full h-[calc(100vh-220px)] min-h-[400px]" />
     </div>
   );
 };
