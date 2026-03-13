@@ -7,25 +7,31 @@ interface Session {
 }
 
 function getActiveSessions(): Session[] {
+  // Use São Paulo time (BRT = UTC-3) as reference
   const now = new Date();
-  const utcH = now.getUTCHours();
+  const spFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    hour: 'numeric',
+    hour12: false,
+  });
+  const spHour = parseInt(spFormatter.format(now), 10);
 
   const sessions: Session[] = [];
 
-  // Tokyo/Asia: 00:00-09:00 UTC
-  if (utcH >= 0 && utcH < 9) {
+  // Tokyo/Asia: 21:00-06:00 BRT (00:00-09:00 UTC)
+  if (spHour >= 21 || spHour < 6) {
     sessions.push({ name: 'Tóquio', quality: 'baixa', active: true });
   }
-  // London: 07:00-16:00 UTC
-  if (utcH >= 7 && utcH < 16) {
+  // London: 04:00-13:00 BRT (07:00-16:00 UTC)
+  if (spHour >= 4 && spHour < 13) {
     sessions.push({ name: 'Londres', quality: 'alta', active: true });
   }
-  // New York: 13:00-22:00 UTC
-  if (utcH >= 13 && utcH < 22) {
+  // New York: 10:00-19:00 BRT (13:00-22:00 UTC)
+  if (spHour >= 10 && spHour < 19) {
     sessions.push({ name: 'Nova York', quality: 'alta', active: true });
   }
-  // Overlap London+NY: 13:00-16:00 UTC
-  if (utcH >= 13 && utcH < 16) {
+  // Overlap London+NY: 10:00-13:00 BRT (13:00-16:00 UTC)
+  if (spHour >= 10 && spHour < 13) {
     sessions.push({ name: 'Overlap LDN/NY', quality: 'alta', active: true });
   }
 
