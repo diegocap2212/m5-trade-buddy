@@ -6,7 +6,7 @@ interface Session {
   active: boolean;
 }
 
-function getActiveSessions(): Session[] {
+export function getActiveSessions(): Session[] {
   // Use São Paulo time (BRT = UTC-3) as reference
   const now = new Date();
   const spFormatter = new Intl.DateTimeFormat('en-US', {
