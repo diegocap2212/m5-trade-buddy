@@ -1,19 +1,24 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, BarChart3, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, Target, Shield } from 'lucide-react';
 
 interface SessionStatsProps {
   wins: number;
   losses: number;
   totalSignals: number;
   winRate: number;
+  mg1Stats?: {
+    winsDirect: number;
+    winsMG1: number;
+    lossesReal: number;
+  };
 }
 
-const SessionStats = ({ wins, losses, totalSignals, winRate }: SessionStatsProps) => {
+const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: SessionStatsProps) => {
   const stats = [
-    { label: 'Sinais', value: totalSignals, icon: BarChart3, color: 'text-foreground' },
-    { label: 'Wins', value: wins, icon: TrendingUp, color: 'text-win' },
-    { label: 'Losses', value: losses, icon: TrendingDown, color: 'text-loss' },
-    { label: 'Win Rate', value: `${winRate.toFixed(0)}%`, icon: Target, color: winRate >= 60 ? 'text-win' : winRate >= 50 ? 'text-pending' : 'text-loss' },
+    { label: 'Win Direto', value: mg1Stats?.winsDirect ?? wins, icon: TrendingUp, color: 'text-win' },
+    { label: 'Win MG1', value: mg1Stats?.winsMG1 ?? 0, icon: Shield, color: 'text-pending' },
+    { label: 'Loss Real', value: mg1Stats?.lossesReal ?? losses, icon: TrendingDown, color: 'text-loss' },
+    { label: 'WR Final', value: `${winRate.toFixed(0)}%`, icon: Target, color: winRate >= 70 ? 'text-win' : winRate >= 55 ? 'text-pending' : 'text-loss' },
   ];
 
   return (
