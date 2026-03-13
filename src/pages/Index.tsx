@@ -140,6 +140,8 @@ const Index = () => {
               entryTime={entryTime}
               martingaleTime={martingaleTime}
               consecutiveLosses={consecutiveLosses}
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
             />
           </div>
 
