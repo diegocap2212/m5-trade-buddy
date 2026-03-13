@@ -3,6 +3,7 @@ import AssetSelector from '@/components/trading/AssetSelector';
 import CandleCountdown from '@/components/trading/CandleCountdown';
 import ConnectionStatus from '@/components/trading/ConnectionStatus';
 import SignalCard from '@/components/trading/SignalCard';
+import CandlestickChart from '@/components/trading/CandlestickChart';
 import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
 import RiskManager from '@/components/trading/RiskManager';
@@ -14,7 +15,7 @@ import type { Timeframe } from '@/lib/trading-types';
 const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('BTC/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M5');
-  const { currentSignal, signalHistory, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses } =
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses } =
     useTradingEngine(selectedAsset, timeframe);
 
   return (
@@ -37,6 +38,9 @@ const Index = () => {
 
         {/* Market Session */}
         <MarketSession />
+
+        {/* Candlestick Chart */}
+        {candles.length > 0 && <CandlestickChart candles={candles} />}
 
         {/* Session Stats */}
         <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} />

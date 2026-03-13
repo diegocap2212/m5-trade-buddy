@@ -70,6 +70,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   return {
     currentSignal,
     signalHistory,
+    candles,
     connected,
     connectionStatus: status,
     wins,
