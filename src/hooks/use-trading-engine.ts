@@ -86,7 +86,10 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     };
 
     setCurrentSignal(signal);
-
+    
+    // Sound alert for new signal
+    if (signal.direction === 'CALL') playCallAlert();
+    else if (signal.direction === 'PUT') playPutAlert();
     pendingValidation.current = {
       signal,
       entryPrice: analysis.price,
