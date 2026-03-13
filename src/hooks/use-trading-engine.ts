@@ -4,6 +4,7 @@ import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
 import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
 import { useSessionHistory } from './use-session-history';
+import { recordResult } from '@/lib/global-stats';
 
 export interface MG1Stats {
   winsDirect: number;
