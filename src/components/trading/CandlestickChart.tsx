@@ -253,7 +253,13 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       vwapRef.current?.setData(computeVWAPSeries(candles));
     } else {
       const lastPoint = candleData[candleData.length - 1];
-      if (lastPoint) candleSeriesRef.current?.update(lastPoint);
+      if (lastPoint) {
+        try {
+          candleSeriesRef.current?.update(lastPoint);
+        } catch {
+          candleSeriesRef.current?.setData(candleData);
+        }
+      }
     }
 
     // ── Entry price line ──────────────────────────────────────────
