@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import AssetSelector from '@/components/trading/AssetSelector';
 import CandleCountdown from '@/components/trading/CandleCountdown';
 import ConnectionStatus from '@/components/trading/ConnectionStatus';
@@ -12,6 +12,7 @@ import OperatingModeToggle from '@/components/trading/OperatingModeToggle';
 import OpportunityBanner from '@/components/trading/OpportunityBanner';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { useMultiScanner } from '@/hooks/use-multi-scanner';
+import type { ScannerOpportunity } from '@/hooks/use-multi-scanner';
 import { Activity, Volume2, VolumeX, FileBarChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Timeframe } from '@/lib/trading-types';
@@ -23,6 +24,8 @@ const Index = () => {
   const [soundMuted, setSoundMuted] = useState(false);
   const [operating, setOperating] = useState(false);
   const [capital, setCapital] = useState(1000);
+  const [pinnedOpportunity, setPinnedOpportunity] = useState<ScannerOpportunity | null>(null);
+  const pinnedTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const toggleMute = () => {
     const next = !soundMuted;
@@ -32,6 +35,29 @@ const Index = () => {
   const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats } =
     useTradingEngine(selectedAsset, timeframe);
   const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
+
+  const handleSwitchAsset = useCallback((asset: string) => {
+    const opp = opportunities.find(o => o.asset === asset);
+    if (opp) {
+      setPinnedOpportunity(opp);
+      clearTimeout(pinnedTimerRef.current);
+      pinnedTimerRef.current = setTimeout(() => setPinnedOpportunity(null), 60_000);
+    }
+    setSelectedAsset(asset);
+  }, [opportunities]);
+
+  const handleDismissPinned = useCallback(() => {
+    setPinnedOpportunity(null);
+    clearTimeout(pinnedTimerRef.current);
+  }, []);
+
+  // Auto-dismiss pinned when a real signal appears
+  useEffect(() => {
+    if (pinnedOpportunity && currentSignal && currentSignal.direction !== 'WAIT') {
+      setPinnedOpportunity(null);
+      clearTimeout(pinnedTimerRef.current);
+    }
+  }, [currentSignal, pinnedOpportunity]);
 
   return (
     <div className="min-h-screen bg-background p-3 md:p-5">
@@ -75,8 +101,10 @@ const Index = () => {
         <OpportunityBanner
           opportunities={opportunities}
           scanning={scanning}
-          onSwitchAsset={setSelectedAsset}
+          onSwitchAsset={handleSwitchAsset}
           onDismiss={dismissOpportunity}
+          pinnedOpportunity={pinnedOpportunity}
+          onDismissPinned={handleDismissPinned}
         />
 
         {/* Main Grid */}
