@@ -151,6 +151,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsDirect: prev.winsDirect + 1 }));
+        recordResult('WIN_DIRECT', selectedAsset, timeframe);
         pendingValidation.current = null;
         playWinSound();
       } else {
