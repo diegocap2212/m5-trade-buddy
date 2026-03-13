@@ -58,7 +58,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       
       lockedCandleTimestamp.current = null;
       pendingValidation.current = null;
-      backtestRan.current = restored.signals.length > 0; // skip backtest if already have data
+      backtestRan.current = false; // always re-run backtest with correct candles
       setCurrentSignal(null);
     }
     prevKeyRef.current = newKey;
