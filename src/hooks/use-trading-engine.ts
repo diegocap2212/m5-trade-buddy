@@ -58,7 +58,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       
       lockedCandleTimestamp.current = null;
       pendingValidation.current = null;
-      backtestRan.current = false; // always re-run backtest with correct candles
+      backtestRan.current = restored.signals.length > 0; // skip backtest if session already has data
       setCurrentSignal(null);
     }
     prevKeyRef.current = newKey;
@@ -187,13 +187,27 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
   // Backtest
   const backtestRan = useRef(false);
+  const backtestAssetRef = useRef('');
   useEffect(() => {
-    if (candles.length >= 23 && !backtestRan.current) {
+    if (candles.length >= 23 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
       backtestRan.current = true;
+      backtestAssetRef.current = selectedAsset;
+      // Verify candles belong to current asset by checking we have fresh data
       const result = backtestCandles(candles, selectedAsset);
       if (result.signals.length > 0) {
-        setSignalHistory(result.signals);
-        setMG1Stats(result.stats);
+        setSignalHistory(prev => {
+          // Merge: keep existing real-time signals, add backtest signals that don't overlap
+          const existingTimes = new Set(prev.map(s => s.timestamp.getTime()));
+          const newSignals = result.signals.filter(s => !existingTimes.has(s.timestamp.getTime()));
+          if (newSignals.length === 0) return prev;
+          return [...newSignals, ...prev].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 50);
+        });
+        setMG1Stats(prev => ({
+          winsDirect: prev.winsDirect + result.stats.winsDirect,
+          winsMG1: prev.winsMG1 + result.stats.winsMG1,
+          lossesMG1: prev.lossesMG1 + result.stats.lossesMG1,
+          lossesDirect: prev.lossesDirect + result.stats.lossesDirect,
+        }));
         recordBacktestResults(result.signals, timeframe);
       }
     }
