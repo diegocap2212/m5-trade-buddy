@@ -107,7 +107,7 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   return MARKER_CONFIG.PENDING[dir];
 }
 
-const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0 }: CandlestickChartProps) => {
+const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0, timeframe, onTimeframeChange }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
