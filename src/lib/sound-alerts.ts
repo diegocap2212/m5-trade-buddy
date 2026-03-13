@@ -28,7 +28,7 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
 
 /** Rising two-tone alert for new CALL signal */
 export function playCallAlert() {
-  const ctx = getCtx();
+  
   playTone(523, 0.15, 'sine', 0.18); // C5
   setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120); // E5
   setTimeout(() => playTone(784, 0.3, 'sine', 0.15), 240); // G5
