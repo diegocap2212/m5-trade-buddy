@@ -5,8 +5,8 @@ import { getBinanceStreamUrls, getBinanceSymbol, getBinanceInterval } from '@/li
 const CANDLE_BUFFER = 200;
 const INITIAL_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 15000;
-const HEALTH_CHECK_INTERVAL = 20000; // 20s — Binance sends frames ~every second
-const STALE_THRESHOLD = 30000; // 30s without data → reconnect
+const HEALTH_CHECK_INTERVAL = 20000;
+const STALE_THRESHOLD = 30000;
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 
@@ -18,17 +18,6 @@ interface BinanceKline {
   c: string;
   v: string;
   x: boolean;
-}
-
-function klineToCandle(k: BinanceKline): CandleData {
-  return {
-    open: parseFloat(k.o),
-    high: parseFloat(k.h),
-    low: parseFloat(k.l),
-    close: parseFloat(k.c),
-    volume: parseFloat(k.v),
-    timestamp: k.t,
-  };
 }
 
 export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
@@ -44,7 +33,28 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
   const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
   const consecutiveFailures = useRef(0);
 
-  // Fetch initial candles via REST (very stable)
+  // Pre-allocated parser — avoid creating objects in the hot path
+  const parseKline = useCallback((data: string): { candle: CandleData; isClosed: boolean } | null => {
+    try {
+      const msg = JSON.parse(data);
+      const k = msg.k;
+      if (!k) return null;
+      return {
+        candle: {
+          open: +k.o,
+          high: +k.h,
+          low: +k.l,
+          close: +k.c,
+          volume: +k.v,
+          timestamp: k.t,
+        },
+        isClosed: k.x,
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
   const fetchInitialCandles = useCallback(async () => {
     try {
       const symbol = getBinanceSymbol(pair).toUpperCase();
@@ -55,11 +65,11 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       if (!res.ok) return [];
       const data = await res.json();
       return (data as any[][]).map((k): CandleData => ({
-        open: parseFloat(k[1]),
-        high: parseFloat(k[2]),
-        low: parseFloat(k[3]),
-        close: parseFloat(k[4]),
-        volume: parseFloat(k[5]),
+        open: +k[1],
+        high: +k[2],
+        low: +k[3],
+        close: +k[4],
+        volume: +k[5],
         timestamp: k[0],
       }));
     } catch {
@@ -86,34 +96,26 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
 
     const urls = getBinanceStreamUrls(pair, timeframe);
     const url = urls[endpointIndex.current % urls.length];
-
-    console.log(`[WS] Connecting to endpoint ${endpointIndex.current % urls.length}: ${url}`);
     setStatus('connecting');
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
     const connectionTimeout = setTimeout(() => {
-      if (ws.readyState !== WebSocket.OPEN) {
-        console.log('[WS] Connection timeout, trying next endpoint');
-        ws.close();
-      }
+      if (ws.readyState !== WebSocket.OPEN) ws.close();
     }, 5000);
 
     ws.onopen = () => {
       clearTimeout(connectionTimeout);
-      console.log('[WS] Connected successfully');
       setStatus('connected');
       reconnectDelay.current = INITIAL_RECONNECT_DELAY;
       consecutiveFailures.current = 0;
       lastMessageTime.current = Date.now();
 
-      // Health check: detect stale connections
       clearInterval(healthTimer.current);
       healthTimer.current = setInterval(() => {
         const elapsed = Date.now() - lastMessageTime.current;
         if (elapsed > STALE_THRESHOLD && wsRef.current?.readyState === WebSocket.OPEN) {
-          console.log(`[WS] No data for ${elapsed}ms, reconnecting...`);
           wsRef.current.close();
         }
       }, HEALTH_CHECK_INTERVAL);
@@ -121,27 +123,45 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
 
     ws.onmessage = (event) => {
       lastMessageTime.current = Date.now();
-      try {
-        const msg = JSON.parse(event.data);
-        if (!msg.k) return;
-        const kline: BinanceKline = msg.k;
-        const candle = klineToCandle(kline);
+      const parsed = parseKline(event.data);
+      if (!parsed) return;
 
-        setCandles((prev) => {
-          if (kline.x) {
-            const updated = [...prev, candle];
-            return updated.slice(-CANDLE_BUFFER);
+      const { candle, isClosed } = parsed;
+
+      // Minimal allocation update — mutate-safe with functional setState
+      setCandles((prev) => {
+        const len = prev.length;
+
+        if (isClosed) {
+          // Closed candle: append and trim
+          if (len >= CANDLE_BUFFER) {
+            // Reuse array, shift start instead of full slice
+            const next = prev.slice(len - CANDLE_BUFFER + 1);
+            next.push(candle);
+            return next;
           }
-          if (prev.length === 0) return [candle];
-          const last = prev[prev.length - 1];
-          if (last.timestamp === candle.timestamp) {
-            return [...prev.slice(0, -1), candle];
-          }
-          return [...prev, candle].slice(-CANDLE_BUFFER);
-        });
-      } catch {
-        // ignore parse errors
-      }
+          return [...prev, candle];
+        }
+
+        // In-progress candle: update last entry in-place
+        if (len === 0) return [candle];
+
+        const last = prev[len - 1];
+        if (last.timestamp === candle.timestamp) {
+          // Same candle — replace last element only
+          const next = prev.slice(0, -1);
+          next.push(candle);
+          return next;
+        }
+
+        // New candle not yet closed
+        if (len >= CANDLE_BUFFER) {
+          const next = prev.slice(len - CANDLE_BUFFER + 1);
+          next.push(candle);
+          return next;
+        }
+        return [...prev, candle];
+      });
     };
 
     ws.onclose = () => {
@@ -157,17 +177,14 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       consecutiveFailures.current++;
       setStatus('reconnecting');
 
-      // Rotate endpoint after every 2 failures on same endpoint
       if (consecutiveFailures.current % 2 === 0) {
         endpointIndex.current++;
-        console.log(`[WS] Switching to endpoint ${endpointIndex.current % urls.length}`);
       }
 
       const delay = Math.min(
-        reconnectDelay.current * (1 + Math.random() * 0.3), // jitter
+        reconnectDelay.current * (1 + Math.random() * 0.3),
         MAX_RECONNECT_DELAY
       );
-      console.log(`[WS] Reconnecting in ${Math.round(delay)}ms (attempt ${consecutiveFailures.current})`);
 
       reconnectTimer.current = setTimeout(() => {
         reconnectDelay.current = Math.min(reconnectDelay.current * 1.5, MAX_RECONNECT_DELAY);
@@ -179,7 +196,7 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       clearTimeout(connectionTimeout);
       ws.close();
     };
-  }, [pair, timeframe, cleanup]);
+  }, [pair, timeframe, cleanup, parseKline]);
 
   useEffect(() => {
     shouldConnect.current = true;
