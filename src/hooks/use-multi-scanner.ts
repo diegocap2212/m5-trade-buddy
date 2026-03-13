@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getBinanceSymbol, getBinanceInterval } from '@/lib/binance-symbols';
 import { analyzeMarket, type SignalAnalysis } from '@/lib/signal-engine';
 import type { CandleData, Timeframe } from '@/lib/trading-types';
-import { ALL_PAIRS } from '@/lib/trading-types';
+import { CRYPTO_PAIRS, getAssetSource } from '@/lib/trading-types';
 
 const SCAN_INTERVAL = 15_000; // scan every 15s
 const CANDLE_FETCH_LIMIT = 50; // enough for indicators
@@ -43,7 +43,8 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
   const lastAlertRef = useRef<Record<string, number>>({});
 
   const scan = useCallback(async () => {
-    const assetsToScan = ALL_PAIRS.filter(p => p !== activeAsset);
+    // Only scan Binance (crypto) pairs — forex needs a separate polling mechanism
+    const assetsToScan = CRYPTO_PAIRS.filter(p => p !== activeAsset);
     setScanning(true);
 
     const results: ScannerOpportunity[] = [];
