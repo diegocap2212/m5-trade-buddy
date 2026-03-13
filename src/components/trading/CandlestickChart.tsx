@@ -57,12 +57,27 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
         timeVisible: true,
         secondsVisible: false,
         borderColor: 'hsl(210, 10%, 20%)',
+        minBarSpacing: 6,
       },
       rightPriceScale: {
         borderColor: 'hsl(210, 10%, 20%)',
       },
-      handleScroll: true,
-      handleScale: true,
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: true,
+        axisDoubleClickReset: true,
+      },
+      kineticScroll: {
+        mouse: true,
+        touch: true,
+      },
     });
 
     chartRef.current = chart;
