@@ -3,6 +3,8 @@ import type { ScannerOpportunity } from '@/hooks/use-multi-scanner';
 import { playCallAlert, playPutAlert } from '@/lib/sound-alerts';
 import { useEffect, useRef } from 'react';
 
+import type { Timeframe } from '@/lib/trading-types';
+
 interface OpportunityBannerProps {
   opportunities: ScannerOpportunity[];
   scanning: boolean;
@@ -10,6 +12,14 @@ interface OpportunityBannerProps {
   onDismiss: (asset: string) => void;
   pinnedOpportunity?: ScannerOpportunity | null;
   onDismissPinned?: () => void;
+  timeframe: Timeframe;
+}
+
+function getEntryTime(timeframe: Timeframe): string {
+  const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
+  const entryTs = Math.ceil(Date.now() / intervalMs) * intervalMs - 1000;
+  const d = new Date(entryTs);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
 const OpportunityItem = ({
@@ -17,11 +27,13 @@ const OpportunityItem = ({
   pinned,
   onAction,
   onDismiss,
+  timeframe,
 }: {
   opp: ScannerOpportunity;
   pinned?: boolean;
   onAction: () => void;
   onDismiss: () => void;
+  timeframe: Timeframe;
 }) => {
   const isCall = opp.analysis.direction === 'CALL';
   return (
@@ -60,6 +72,12 @@ const OpportunityItem = ({
             RSI {opp.analysis.rsi}
           </span>
           <span>{opp.analysis.pattern}</span>
+          <span className="px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-bold">
+            {timeframe}
+          </span>
+          <span className="px-1.5 py-0.5 rounded bg-background/50 border border-border text-muted-foreground">
+            ⏱ {getEntryTime(timeframe)}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -86,7 +104,7 @@ const OpportunityItem = ({
   );
 };
 
-const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, pinnedOpportunity, onDismissPinned }: OpportunityBannerProps) => {
+const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, pinnedOpportunity, onDismissPinned, timeframe }: OpportunityBannerProps) => {
   const lastSoundRef = useRef<string>('');
 
   useEffect(() => {
@@ -112,6 +130,7 @@ const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, 
           pinned
           onAction={() => {}}
           onDismiss={onDismissPinned}
+          timeframe={timeframe}
         />
       )}
       {opportunities.map((opp) => (
@@ -120,6 +139,7 @@ const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, 
           opp={opp}
           onAction={() => onSwitchAsset(opp.asset)}
           onDismiss={() => onDismiss(opp.asset)}
+          timeframe={timeframe}
         />
       ))}
     </div>
