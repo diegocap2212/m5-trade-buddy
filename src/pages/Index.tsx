@@ -10,7 +10,8 @@ import MarketSession from '@/components/trading/MarketSession';
 import GlobalAssertiveness from '@/components/trading/GlobalAssertiveness';
 import OperatingModeToggle from '@/components/trading/OperatingModeToggle';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
-import { Activity, Volume2, VolumeX } from 'lucide-react';
+import { Activity, Volume2, VolumeX, FileBarChart } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { Timeframe } from '@/lib/trading-types';
 import { isMuted, setMuted } from '@/lib/sound-alerts';
 
