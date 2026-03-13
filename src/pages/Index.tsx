@@ -7,6 +7,7 @@ import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
 import RiskManager from '@/components/trading/RiskManager';
 import MarketSession from '@/components/trading/MarketSession';
+import OperatingModeToggle from '@/components/trading/OperatingModeToggle';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { Activity, Volume2, VolumeX } from 'lucide-react';
 import type { Timeframe } from '@/lib/trading-types';
@@ -16,6 +17,8 @@ const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('BTC/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M5');
   const [soundMuted, setSoundMuted] = useState(false);
+  const [operating, setOperating] = useState(false);
+  const [capital, setCapital] = useState(1000);
 
   const toggleMute = () => {
     const next = !soundMuted;
@@ -42,6 +45,8 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <OperatingModeToggle operating={operating} onToggle={setOperating} />
+            <div className="w-px h-6 bg-border" />
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
             <CandleCountdown timeframe={timeframe} onTimeframeChange={setTimeframe} />
             <button
@@ -61,6 +66,7 @@ const Index = () => {
           <div className="lg:col-span-3 space-y-3">
             <MarketSession />
             <CandlestickChart
+              key={`${selectedAsset}_${timeframe}`}
               candles={candles}
               currentSignal={currentSignal}
               signalHistory={signalHistory}
@@ -72,20 +78,35 @@ const Index = () => {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-3">
-            <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} mg1Stats={mg1Stats} />
-            <RiskManager
-              consecutiveLosses={consecutiveLosses}
-              totalLosses={losses}
+            <SessionStats
+              wins={wins}
+              losses={losses}
               totalSignals={totalSignals}
+              winRate={winRate}
+              mg1Stats={mg1Stats}
+              operating={operating}
+              capital={capital}
               selectedAsset={selectedAsset}
-              lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
             />
+            {operating && (
+              <RiskManager
+                consecutiveLosses={consecutiveLosses}
+                totalLosses={losses}
+                totalSignals={totalSignals}
+                selectedAsset={selectedAsset}
+                lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
+                capital={capital}
+                onCapitalChange={setCapital}
+              />
+            )}
             <SignalHistory
               signals={signalHistory}
               sessionWinRate={winRate}
               totalSignals={totalSignals}
               wins={wins}
               losses={losses}
+              selectedAsset={selectedAsset}
+              timeframe={timeframe}
             />
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TrendingUp, Shield, ShieldAlert, TrendingDown } from 'lucide-react';
-import type { TradingSignal, ResultDetail } from '@/lib/trading-types';
+import type { TradingSignal, ResultDetail, Timeframe } from '@/lib/trading-types';
 
 interface SignalHistoryProps {
   signals: TradingSignal[];
@@ -9,6 +9,8 @@ interface SignalHistoryProps {
   totalSignals: number;
   wins: number;
   losses: number;
+  selectedAsset?: string;
+  timeframe?: Timeframe;
 }
 
 const detailConfig: Record<ResultDetail, { label: string; icon: React.ElementType; className: string }> = {
@@ -30,11 +32,18 @@ const directionBadge = {
   WAIT: 'bg-signal-wait/20 text-signal-wait border-signal-wait/30',
 };
 
-const SignalHistory = ({ signals, sessionWinRate, totalSignals, wins, losses }: SignalHistoryProps) => {
+const SignalHistory = ({ signals, sessionWinRate, totalSignals, wins, losses, selectedAsset, timeframe }: SignalHistoryProps) => {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="font-mono text-xs font-semibold text-foreground tracking-wider">HISTÓRICO</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs font-semibold text-foreground tracking-wider">HISTÓRICO</span>
+          {selectedAsset && timeframe && (
+            <Badge variant="outline" className="font-mono text-[9px] border-border text-muted-foreground px-1.5 py-0">
+              {selectedAsset} • {timeframe}
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2 font-mono text-[10px]">
           <span className="text-win">{wins}W</span>
           <span className="text-loss">{losses}L</span>

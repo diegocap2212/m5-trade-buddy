@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
 import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
+import { useSessionHistory } from './use-session-history';
 
 export interface MG1Stats {
   winsDirect: number;
@@ -26,9 +27,41 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
   const lockedCandleTimestamp = useRef<number | null>(null);
   const pendingValidation = useRef<PendingValidation | null>(null);
+  const prevKeyRef = useRef<string>('');
 
   const { candles, status } = useBinanceWebSocket(selectedAsset, timeframe);
   const connected = status === 'connected';
+
+  const sessionHistory = useSessionHistory();
+
+  // Save current session before switching
+  const saveCurrentSession = useCallback(() => {
+    if (prevKeyRef.current) {
+      const [prevAsset, prevTf] = prevKeyRef.current.split('_') as [string, Timeframe];
+      sessionHistory.saveSession(prevAsset, prevTf, signalHistory, mg1Stats);
+    }
+  }, [signalHistory, mg1Stats, sessionHistory]);
+
+  // Handle asset/timeframe change — persist and restore
+  useEffect(() => {
+    const newKey = `${selectedAsset}_${timeframe}`;
+    if (prevKeyRef.current && prevKeyRef.current !== newKey) {
+      // Save outgoing session
+      const [prevAsset, prevTf] = prevKeyRef.current.split('_') as [string, Timeframe];
+      sessionHistory.saveSession(prevAsset, prevTf, signalHistory, mg1Stats);
+
+      // Load incoming session
+      const restored = sessionHistory.switchSession(selectedAsset, timeframe);
+      setSignalHistory(restored.signals);
+      setMG1Stats(restored.stats);
+      
+      lockedCandleTimestamp.current = null;
+      pendingValidation.current = null;
+      backtestRan.current = restored.signals.length > 0; // skip backtest if already have data
+      setCurrentSignal(null);
+    }
+    prevKeyRef.current = newKey;
+  }, [selectedAsset, timeframe]);
 
   // Analyze market
   useEffect(() => {
@@ -87,7 +120,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
     setCurrentSignal(signal);
     
-    // Sound alert for new signal
     if (signal.direction === 'CALL') playCallAlert();
     else if (signal.direction === 'PUT') playPutAlert();
     pendingValidation.current = {
@@ -162,16 +194,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     }
   }, [candles, selectedAsset]);
 
-  // Reset on asset change
-  useEffect(() => {
-    lockedCandleTimestamp.current = null;
-    pendingValidation.current = null;
-    backtestRan.current = false;
-    setCurrentSignal(null);
-    setSignalHistory([]);
-    setMG1Stats({ winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 });
-  }, [selectedAsset]);
-
   const totalDecided = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.lossesMG1 + mg1Stats.lossesDirect;
   const wins = mg1Stats.winsDirect + mg1Stats.winsMG1;
   const losses = mg1Stats.lossesMG1 + mg1Stats.lossesDirect;
@@ -203,5 +225,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     entryTime,
     martingaleTime,
     mg1Stats,
+    sessionHistory,
   };
 }
