@@ -8,8 +8,9 @@ import SessionStats from '@/components/trading/SessionStats';
 import RiskManager from '@/components/trading/RiskManager';
 import MarketSession from '@/components/trading/MarketSession';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
-import { Activity } from 'lucide-react';
+import { Activity, Volume2, VolumeX } from 'lucide-react';
 import type { Timeframe } from '@/lib/trading-types';
+import { isMuted, setMuted } from '@/lib/sound-alerts';
 
 const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('BTC/USD');

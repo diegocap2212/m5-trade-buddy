@@ -13,7 +13,7 @@ function getCtx(): AudioContext {
 }
 
 function playTone(freq: number, duration: number, type: OscillatorType = 'sine', gain = 0.15) {
-  const ctx = getCtx();
+  if (muted) return;
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = type;
