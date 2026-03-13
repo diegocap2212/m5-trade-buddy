@@ -142,15 +142,18 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
     });
 
     const ro = new ResizeObserver((entries) => {
+      if (!chartRef.current) return;
       const { width, height } = entries[0].contentRect;
-      chart.applyOptions({ width, height });
+      if (width > 0 && height > 0) {
+        chart.applyOptions({ width, height });
+      }
     });
     ro.observe(containerRef.current);
 
     return () => {
       ro.disconnect();
-      chart.remove();
       chartRef.current = null;
+      chart.remove();
     };
   }, []);
 
