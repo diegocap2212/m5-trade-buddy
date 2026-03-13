@@ -108,7 +108,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       support: analysis.support,
       resistance: analysis.resistance,
       pattern: analysis.pattern,
-      timestamp: new Date(),
+      timestamp: new Date(lastTimestamp),
       result: 'PENDING',
       ema200Bias: analysis.ema200Bias,
       rsi: analysis.rsi,
