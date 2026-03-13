@@ -19,7 +19,8 @@ const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss }
       const key = `${opportunities[0].asset}_${opportunities[0].timestamp}`;
       if (key !== lastSoundRef.current) {
         lastSoundRef.current = key;
-        playSignalSound(opportunities[0].analysis.direction as 'CALL' | 'PUT');
+        const play = opportunities[0].analysis.direction === 'CALL' ? playCallAlert : playPutAlert;
+        play();
       }
     }
   }, [opportunities]);
