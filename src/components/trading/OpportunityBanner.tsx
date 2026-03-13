@@ -15,16 +15,25 @@ interface OpportunityBannerProps {
   timeframe: Timeframe;
 }
 
+function getEntryTime(timeframe: Timeframe): string {
+  const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
+  const entryTs = Math.ceil(Date.now() / intervalMs) * intervalMs - 1000;
+  const d = new Date(entryTs);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+}
+
 const OpportunityItem = ({
   opp,
   pinned,
   onAction,
   onDismiss,
+  timeframe,
 }: {
   opp: ScannerOpportunity;
   pinned?: boolean;
   onAction: () => void;
   onDismiss: () => void;
+  timeframe: Timeframe;
 }) => {
   const isCall = opp.analysis.direction === 'CALL';
   return (
