@@ -113,10 +113,6 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
   const vwapRef = useRef<ISeriesApi<'Line'> | null>(null);
   const entryLineRef = useRef<ISeriesApi<'Line'> | null>(null);
   const markersPrimitiveRef = useRef<any>(null);
-  const prevCandleCountRef = useRef(0);
-  const prevLastTimeRef = useRef(0);
-  const prevSignalCountRef = useRef(0);
-  const prevLastSignalIdRef = useRef('');
   const [autoScroll, setAutoScroll] = useState(true);
   const userDragRef = useRef(false);
 
@@ -172,11 +168,10 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     bbLowerRef.current = chart.addSeries(LineSeries, { color: 'rgba(100, 180, 230, 0.5)', lineWidth: 1, lineStyle: 2, title: 'BB-', priceLineVisible: false, lastValueVisible: false });
     vwapRef.current = chart.addSeries(LineSeries, { color: '#ff6d00', lineWidth: 2, title: 'VWAP', priceLineVisible: false, lastValueVisible: false });
 
-    // Entry price horizontal line series (dashed)
     entryLineRef.current = chart.addSeries(LineSeries, {
       color: 'rgba(255, 214, 0, 0.6)',
       lineWidth: 1,
-      lineStyle: 2, // dashed
+      lineStyle: 2,
       priceLineVisible: false,
       lastValueVisible: true,
       title: '',
@@ -190,7 +185,6 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     });
     ro.observe(containerRef.current);
 
-    // Detect manual drag to auto-unlock
     const container = containerRef.current;
     const onPointerDown = () => { userDragRef.current = true; };
     const onPointerUp = () => { userDragRef.current = false; };
@@ -213,9 +207,28 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     };
   }, []);
 
-  // Update data
+  // ── Update data — ALWAYS use setData(), NEVER update() ──
   useEffect(() => {
-    if (!chartRef.current || candles.length < 2) return;
+    if (!chartRef.current) return;
+
+    // If candles empty (during asset switch), clear all series and bail
+    if (candles.length < 2) {
+      try {
+        candleSeriesRef.current?.setData([]);
+        ema9Ref.current?.setData([]);
+        ema21Ref.current?.setData([]);
+        bbUpperRef.current?.setData([]);
+        bbMiddleRef.current?.setData([]);
+        bbLowerRef.current?.setData([]);
+        vwapRef.current?.setData([]);
+        entryLineRef.current?.setData([]);
+        if (markersPrimitiveRef.current) {
+          markersPrimitiveRef.current.setMarkers([]);
+          markersPrimitiveRef.current = null;
+        }
+      } catch { /* chart destroyed */ }
+      return;
+    }
 
     const seen = new Map<number, CandlestickData>();
     for (const c of candles) {
@@ -225,61 +238,46 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     const candleData = Array.from(seen.values()).sort((a, b) => (a.time as number) - (b.time as number));
     if (candleData.length === 0) return;
 
-    const lastTime = candleData[candleData.length - 1].time as number;
-    const isNewCandle = candles.length !== prevCandleCountRef.current;
-    // Detect data reset (asset switch, reconnection) — last time jumped backwards or changed drastically
-    const isDataReset = prevLastTimeRef.current > 0 && Math.abs(lastTime - prevLastTimeRef.current) > 600;
-
-    prevCandleCountRef.current = candles.length;
-    prevLastTimeRef.current = lastTime;
-
-    const needsFullRedraw = isNewCandle || isDataReset;
-
     try {
-      if (needsFullRedraw) {
-        candleSeriesRef.current?.setData(candleData);
+      // ── Preserve visible range to avoid viewport jumps ──
+      const timeScale = chartRef.current!.timeScale();
+      const savedRange = timeScale.getVisibleLogicalRange();
 
-        const ema9Values = calculateEMA(candles, Math.min(9, candles.length));
-        const ema9Data: LineData[] = ema9Values.map((v, i) => ({
-          time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
+      // Always setData — safe, no "Cannot update oldest data" crashes
+      candleSeriesRef.current?.setData(candleData);
+
+      // Indicators
+      const ema9Values = calculateEMA(candles, Math.min(9, candles.length));
+      const ema9Data: LineData[] = ema9Values.map((v, i) => ({
+        time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
+        value: v,
+      }));
+      ema9Ref.current?.setData(dedupeLineData(ema9Data));
+
+      if (candles.length >= 21) {
+        const ema21Values = calculateEMA(candles, 21);
+        const ema21Data: LineData[] = ema21Values.map((v, i) => ({
+          time: toChartTime(candles[candles.length - ema21Values.length + i].timestamp),
           value: v,
         }));
-        ema9Ref.current?.setData(dedupeLineData(ema9Data));
+        ema21Ref.current?.setData(dedupeLineData(ema21Data));
+      }
 
-        if (candles.length >= 21) {
-          const ema21Values = calculateEMA(candles, 21);
-          const ema21Data: LineData[] = ema21Values.map((v, i) => ({
-            time: toChartTime(candles[candles.length - ema21Values.length + i].timestamp),
-            value: v,
-          }));
-          ema21Ref.current?.setData(dedupeLineData(ema21Data));
-        }
+      const bb = computeBBSeries(candles, 20);
+      bbUpperRef.current?.setData(bb.upper);
+      bbMiddleRef.current?.setData(bb.middle);
+      bbLowerRef.current?.setData(bb.lower);
 
-        const bb = computeBBSeries(candles, 20);
-        bbUpperRef.current?.setData(bb.upper);
-        bbMiddleRef.current?.setData(bb.middle);
-        bbLowerRef.current?.setData(bb.lower);
+      vwapRef.current?.setData(computeVWAPSeries(candles));
 
-        vwapRef.current?.setData(computeVWAPSeries(candles));
-      } else {
-        // Incremental tick update — only update last candle
-        const lastPoint = candleData[candleData.length - 1];
-        if (lastPoint) {
-          try {
-            candleSeriesRef.current?.update(lastPoint);
-          } catch {
-            candleSeriesRef.current?.setData(candleData);
-          }
-        }
+      // ── Restore visible range if user was zoomed/panned ──
+      if (!autoScroll && savedRange) {
+        try {
+          timeScale.setVisibleLogicalRange(savedRange);
+        } catch { /* range may be invalid after data change */ }
       }
     } catch (e) {
-      // Full fallback: if anything fails, do a complete setData
-      console.warn('[Chart] Update error, doing full redraw:', e);
-      try {
-        candleSeriesRef.current?.setData(candleData);
-      } catch {
-        // Chart may have been destroyed
-      }
+      console.warn('[Chart] setData error:', e);
     }
 
     // ── Entry price line ──────────────────────────────────────────
@@ -300,68 +298,54 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       } else {
         entryLineRef.current?.setData([]);
       }
-    } catch {
-      // Entry line update failed — non-critical
-    }
+    } catch { /* non-critical */ }
 
     // ── Signal markers ────────────────────────────────────────────
     try {
-      const lastSigId = signalHistory.length > 0 ? signalHistory[0].id : '';
-      const markersChanged = signalHistory.length !== prevSignalCountRef.current ||
-        lastSigId !== prevLastSignalIdRef.current ||
-        (currentSignal && currentSignal.direction !== 'WAIT');
+      const validTimes = new Set<number>();
+      for (const c of candles) validTimes.add(toChartTime(c.timestamp));
 
-      prevSignalCountRef.current = signalHistory.length;
-      prevLastSignalIdRef.current = lastSigId;
+      const markers: any[] = [];
+      const recentHistory = signalHistory.slice(-10);
 
-      if (markersChanged) {
-        const validTimes = new Set<number>();
-        for (const c of candles) validTimes.add(toChartTime(c.timestamp));
-
-        const markers: any[] = [];
-        const recentHistory = signalHistory.slice(-10);
-
-        for (const sig of recentHistory) {
-          if (sig.direction === 'CALL' || sig.direction === 'PUT') {
-            const t = toChartTime(sig.timestamp.getTime());
-            if (!validTimes.has(t)) continue;
-            const style = getMarkerStyle(sig, false);
-            markers.push({
-              time: t,
-              position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-              color: style.color,
-              shape: style.shape,
-              text: style.text,
-              size: 2,
-            });
-          }
-        }
-
-        if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
-          const t = toChartTime(currentSignal.timestamp.getTime());
-          if (validTimes.has(t)) {
-            const style = getMarkerStyle(currentSignal, true);
-            markers.push({
-              time: t,
-              position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-              color: style.color,
-              shape: style.shape,
-              text: style.text,
-              size: 3,
-            });
-          }
-        }
-
-        markers.sort((a, b) => a.time - b.time);
-        if (markersPrimitiveRef.current) {
-          markersPrimitiveRef.current.setMarkers(markers);
-        } else if (candleSeriesRef.current && markers.length > 0) {
-          markersPrimitiveRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
+      for (const sig of recentHistory) {
+        if (sig.direction === 'CALL' || sig.direction === 'PUT') {
+          const t = toChartTime(sig.timestamp.getTime());
+          if (!validTimes.has(t)) continue;
+          const style = getMarkerStyle(sig, false);
+          markers.push({
+            time: t,
+            position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+            color: style.color,
+            shape: style.shape,
+            text: style.text,
+            size: 2,
+          });
         }
       }
-    } catch {
-      // Markers update failed — non-critical
-    }
+
+      if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
+        const t = toChartTime(currentSignal.timestamp.getTime());
+        if (validTimes.has(t)) {
+          const style = getMarkerStyle(currentSignal, true);
+          markers.push({
+            time: t,
+            position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+            color: style.color,
+            shape: style.shape,
+            text: style.text,
+            size: 3,
+          });
+        }
+      }
+
+      markers.sort((a, b) => a.time - b.time);
+      if (markersPrimitiveRef.current) {
+        markersPrimitiveRef.current.setMarkers(markers);
+      } else if (candleSeriesRef.current && markers.length > 0) {
+        markersPrimitiveRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
+      }
+    } catch { /* non-critical */ }
 
     if (autoScroll) {
       chartRef.current?.timeScale().scrollToRealTime();
