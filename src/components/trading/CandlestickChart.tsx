@@ -34,7 +34,7 @@ function dedupeLineData(data: LineData[]): LineData[] {
   return Array.from(map.values()).sort((a, b) => (a.time as number) - (b.time as number));
 }
 
-const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: CandlestickChartProps) => {
+const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0 }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
