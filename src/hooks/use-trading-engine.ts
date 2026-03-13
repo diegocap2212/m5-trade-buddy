@@ -53,7 +53,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   signalHistoryRef.current = signalHistory;
   mg1StatsRef.current = mg1Stats;
 
-  const { candles, status } = useMarketData(selectedAsset, timeframe);
+  const { candles, status, dataSourceLabel } = useMarketData(selectedAsset, timeframe);
   const connected = status === 'connected';
 
   const sessionHistory = useSessionHistory();
