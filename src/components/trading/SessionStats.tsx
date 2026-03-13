@@ -1,5 +1,5 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, BarChart3, Target, Shield } from 'lucide-react';
+import { TrendingUp, Shield, ShieldAlert, TrendingDown, Target } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface SessionStatsProps {
   wins: number;
@@ -9,44 +9,67 @@ interface SessionStatsProps {
   mg1Stats?: {
     winsDirect: number;
     winsMG1: number;
-    lossesReal: number;
+    lossesMG1: number;
+    lossesDirect: number;
   };
 }
 
 const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: SessionStatsProps) => {
-  const total = (mg1Stats?.winsDirect ?? 0) + (mg1Stats?.winsMG1 ?? 0) + (mg1Stats?.lossesReal ?? 0);
-  const hasBacktest = total > 0;
+  const wd = mg1Stats?.winsDirect ?? wins;
+  const wm = mg1Stats?.winsMG1 ?? 0;
+  const lm = mg1Stats?.lossesMG1 ?? losses;
+  const ld = mg1Stats?.lossesDirect ?? 0;
+  const total = wd + wm + lm + ld;
 
-  const stats = [
-    { label: 'Win Direto', value: mg1Stats?.winsDirect ?? wins, icon: TrendingUp, color: 'text-win' },
-    { label: 'Win MG1', value: mg1Stats?.winsMG1 ?? 0, icon: Shield, color: 'text-pending' },
-    { label: 'Loss Real', value: mg1Stats?.lossesReal ?? losses, icon: TrendingDown, color: 'text-loss' },
-    { label: 'WR Final', value: `${winRate.toFixed(0)}%`, icon: Target, color: winRate >= 70 ? 'text-win' : winRate >= 55 ? 'text-pending' : 'text-loss' },
-  ];
+  const wrColor = winRate >= 70 ? 'text-win' : winRate >= 55 ? 'text-pending' : 'text-loss';
+  const wrBarColor = winRate >= 70 ? 'bg-win' : winRate >= 55 ? 'bg-pending' : 'bg-loss';
 
   return (
-    <div className="space-y-2">
-      {hasBacktest && (
-        <div className="flex items-center gap-2 px-1">
-          <BarChart3 className="h-3 w-3 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground font-mono">
-            Backtest histórico ({total} sinais)
-          </span>
+    <div className="space-y-3">
+      {/* Win Rate Hero */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className={`h-4 w-4 ${wrColor}`} />
+            <span className="font-mono text-xs text-muted-foreground tracking-wider">WIN RATE</span>
+          </div>
+          <span className="font-mono text-xs text-muted-foreground">{total} sinais</span>
         </div>
-      )}
-      <div className="grid grid-cols-4 gap-3">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="bg-card border-border">
-            <CardContent className="p-3 flex flex-col items-center gap-1">
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              <span className={`font-mono text-lg font-bold ${stat.color}`}>{stat.value}</span>
-              <span className="text-xs text-muted-foreground">{stat.label}</span>
-            </CardContent>
-          </Card>
-        ))}
+        <div className="flex items-end gap-2">
+          <span className={`font-mono text-3xl font-bold ${wrColor}`}>{winRate.toFixed(1)}%</span>
+        </div>
+        <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
+          <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${wrBarColor}`} style={{ width: `${Math.min(winRate, 100)}%` }} />
+        </div>
+      </div>
+
+      {/* Detail Grid */}
+      <div className="grid grid-cols-2 gap-2">
+        <StatCard icon={TrendingUp} label="Win Direto" value={wd} colorClass="text-win" bgClass="bg-win/10" />
+        <StatCard icon={Shield} label="Win MG1" value={wm} colorClass="text-pending" bgClass="bg-pending/10" />
+        <StatCard icon={ShieldAlert} label="Loss MG1" value={lm} colorClass="text-loss" bgClass="bg-loss/10" />
+        <StatCard icon={TrendingDown} label="Loss Direto" value={ld} colorClass="text-muted-foreground" bgClass="bg-muted/30" />
       </div>
     </div>
   );
 };
+
+function StatCard({ icon: Icon, label, value, colorClass, bgClass }: {
+  icon: React.ElementType;
+  label: string;
+  value: number;
+  colorClass: string;
+  bgClass: string;
+}) {
+  return (
+    <div className={`rounded-lg border border-border p-3 ${bgClass} flex items-center gap-3`}>
+      <Icon className={`h-4 w-4 ${colorClass} shrink-0`} />
+      <div className="min-w-0">
+        <span className={`font-mono text-lg font-bold ${colorClass} block leading-tight`}>{value}</span>
+        <span className="font-mono text-[10px] text-muted-foreground block truncate">{label}</span>
+      </div>
+    </div>
+  );
+}
 
 export default SessionStats;
