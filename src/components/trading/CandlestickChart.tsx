@@ -1,7 +1,7 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
 import type { CandleData, TradingSignal } from '@/lib/trading-types';
-import { calculateEMA, calculateBollingerBands, calculateVWAP } from '@/lib/trading-indicators';
+import { calculateEMA, calculateBollingerBands } from '@/lib/trading-indicators';
 import EntryTimer from './EntryTimer';
 
 interface CandlestickChartProps {
@@ -23,7 +23,6 @@ function dedupeLineData(data: LineData[]): LineData[] {
   return Array.from(map.values()).sort((a, b) => (a.time as number) - (b.time as number));
 }
 
-/** O(n) VWAP series calculation */
 function computeVWAPSeries(candles: CandleData[]): LineData[] {
   let cumulativeTPV = 0;
   let cumulativeVol = 0;
@@ -38,7 +37,6 @@ function computeVWAPSeries(candles: CandleData[]): LineData[] {
   return dedupeLineData(data);
 }
 
-/** Compute Bollinger Bands series in one pass */
 function computeBBSeries(candles: CandleData[], period: number) {
   const upper: LineData[] = [];
   const middle: LineData[] = [];
@@ -55,6 +53,52 @@ function computeBBSeries(candles: CandleData[], period: number) {
   return { upper: dedupeLineData(upper), middle: dedupeLineData(middle), lower: dedupeLineData(lower) };
 }
 
+// ── Rich marker config ──────────────────────────────────────────────
+const MARKER_CONFIG = {
+  WIN_DIRECT: {
+    call: { shape: 'arrowUp' as const, color: '#00e676', text: '🎯 WIN' },
+    put:  { shape: 'arrowDown' as const, color: '#00e676', text: '🎯 WIN' },
+  },
+  WIN_MG1: {
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚡ MG WIN' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚡ MG WIN' },
+  },
+  LOSS_MG1: {
+    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 MG LOSS' },
+    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 MG LOSS' },
+  },
+  LOSS_DIRECT: {
+    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '✗ LOSS' },
+    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '✗ LOSS' },
+  },
+  PENDING: {
+    call: { shape: 'arrowUp' as const, color: '#ffd600', text: '⏳' },
+    put:  { shape: 'arrowDown' as const, color: '#ffd600', text: '⏳' },
+  },
+  ACTIVE: {
+    call: { shape: 'arrowUp' as const, color: '#00e676', text: '' },
+    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '' },
+  },
+};
+
+function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
+  const dir = signal.direction === 'CALL' ? 'call' : 'put';
+
+  if (isActive) {
+    const cfg = MARKER_CONFIG.ACTIVE[dir];
+    return { ...cfg, text: `▶ ${signal.direction} ${signal.confidence}%` };
+  }
+
+  const rd = signal.resultDetail;
+  if (rd && rd in MARKER_CONFIG) {
+    return MARKER_CONFIG[rd as keyof typeof MARKER_CONFIG][dir];
+  }
+
+  if (signal.result === 'WIN') return MARKER_CONFIG.WIN_DIRECT[dir];
+  if (signal.result === 'LOSS') return MARKER_CONFIG.LOSS_DIRECT[dir];
+  return MARKER_CONFIG.PENDING[dir];
+}
+
 const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0 }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -65,6 +109,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
   const bbLowerRef = useRef<ISeriesApi<'Line'> | null>(null);
   const bbMiddleRef = useRef<ISeriesApi<'Line'> | null>(null);
   const vwapRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const entryLineRef = useRef<ISeriesApi<'Line'> | null>(null);
   const markersPrimitiveRef = useRef<any>(null);
   const prevCandleCountRef = useRef(0);
   const prevSignalCountRef = useRef(0);
@@ -107,20 +152,31 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     chartRef.current = chart;
 
     candleSeriesRef.current = chart.addSeries(CandlestickSeries, {
-      upColor: 'hsl(142, 71%, 45%)',
-      downColor: 'hsl(0, 84%, 60%)',
-      borderUpColor: 'hsl(142, 71%, 45%)',
-      borderDownColor: 'hsl(0, 84%, 60%)',
-      wickUpColor: 'hsl(142, 71%, 45%)',
-      wickDownColor: 'hsl(0, 84%, 60%)',
+      upColor: '#00c853',
+      downColor: '#ff1744',
+      borderUpColor: '#00e676',
+      borderDownColor: '#ff5252',
+      wickUpColor: '#00e676',
+      wickDownColor: '#ff5252',
     });
 
-    ema9Ref.current = chart.addSeries(LineSeries, { color: 'hsl(45, 93%, 58%)', lineWidth: 1, title: 'EMA 9', priceLineVisible: false, lastValueVisible: false });
-    ema21Ref.current = chart.addSeries(LineSeries, { color: 'hsl(270, 70%, 60%)', lineWidth: 1, title: 'EMA 21', priceLineVisible: false, lastValueVisible: false });
+    ema9Ref.current = chart.addSeries(LineSeries, { color: '#ffd600', lineWidth: 1, title: 'EMA 9', priceLineVisible: false, lastValueVisible: false });
+    ema21Ref.current = chart.addSeries(LineSeries, { color: '#aa00ff', lineWidth: 1, title: 'EMA 21', priceLineVisible: false, lastValueVisible: false });
     bbUpperRef.current = chart.addSeries(LineSeries, { color: 'rgba(100, 180, 230, 0.5)', lineWidth: 1, lineStyle: 2, title: 'BB+', priceLineVisible: false, lastValueVisible: false });
     bbMiddleRef.current = chart.addSeries(LineSeries, { color: 'rgba(100, 180, 230, 0.3)', lineWidth: 1, lineStyle: 1, priceLineVisible: false, lastValueVisible: false });
     bbLowerRef.current = chart.addSeries(LineSeries, { color: 'rgba(100, 180, 230, 0.5)', lineWidth: 1, lineStyle: 2, title: 'BB-', priceLineVisible: false, lastValueVisible: false });
-    vwapRef.current = chart.addSeries(LineSeries, { color: 'hsl(30, 100%, 60%)', lineWidth: 2, title: 'VWAP', priceLineVisible: false, lastValueVisible: false });
+    vwapRef.current = chart.addSeries(LineSeries, { color: '#ff6d00', lineWidth: 2, title: 'VWAP', priceLineVisible: false, lastValueVisible: false });
+
+    // Entry price horizontal line series (dashed)
+    entryLineRef.current = chart.addSeries(LineSeries, {
+      color: 'rgba(255, 214, 0, 0.6)',
+      lineWidth: 1,
+      lineStyle: 2, // dashed
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: '',
+      crosshairMarkerVisible: false,
+    });
 
     const ro = new ResizeObserver((entries) => {
       if (!chartRef.current) return;
@@ -137,14 +193,13 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     };
   }, []);
 
-  // Update data — incremental for in-progress candle, full recalc on new candle close
+  // Update data
   useEffect(() => {
     if (!chartRef.current || candles.length < 2) return;
 
     const isNewCandle = candles.length !== prevCandleCountRef.current;
     prevCandleCountRef.current = candles.length;
 
-    // Always update candle data (deduped)
     const seen = new Map<number, CandlestickData>();
     for (const c of candles) {
       const time = toChartTime(c.timestamp);
@@ -153,10 +208,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     const candleData = Array.from(seen.values()).sort((a, b) => (a.time as number) - (b.time as number));
 
     if (isNewCandle) {
-      // Full setData + recalculate indicators only on new candle
       candleSeriesRef.current?.setData(candleData);
 
-      // EMA 9
       const ema9Values = calculateEMA(candles, Math.min(9, candles.length));
       const ema9Data: LineData[] = ema9Values.map((v, i) => ({
         time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
@@ -164,7 +217,6 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       }));
       ema9Ref.current?.setData(dedupeLineData(ema9Data));
 
-      // EMA 21
       if (candles.length >= 21) {
         const ema21Values = calculateEMA(candles, 21);
         const ema21Data: LineData[] = ema21Values.map((v, i) => ({
@@ -174,26 +226,42 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
         ema21Ref.current?.setData(dedupeLineData(ema21Data));
       }
 
-      // Bollinger Bands
       const bb = computeBBSeries(candles, 20);
       bbUpperRef.current?.setData(bb.upper);
       bbMiddleRef.current?.setData(bb.middle);
       bbLowerRef.current?.setData(bb.lower);
 
-      // VWAP O(n)
       vwapRef.current?.setData(computeVWAPSeries(candles));
     } else {
-      // Incremental update — just update last candle point
       const lastPoint = candleData[candleData.length - 1];
       if (lastPoint) candleSeriesRef.current?.update(lastPoint);
     }
 
-    // Markers — only update when signal history changes
+    // ── Entry price line ──────────────────────────────────────────
+    if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT') && currentSignal.result === 'PENDING') {
+      const entryPrice = currentSignal.price;
+      const lineColor = currentSignal.direction === 'CALL' ? '#00e676' : '#ff1744';
+      entryLineRef.current?.applyOptions({
+        color: lineColor,
+        title: `⇢ ${currentSignal.direction} @ ${entryPrice.toFixed(2)}`,
+      });
+      // Draw a flat line across visible range
+      const firstTime = toChartTime(candles[0].timestamp);
+      const lastTime = toChartTime(candles[candles.length - 1].timestamp);
+      entryLineRef.current?.setData([
+        { time: firstTime, value: entryPrice },
+        { time: lastTime, value: entryPrice },
+      ]);
+    } else {
+      entryLineRef.current?.setData([]);
+    }
+
+    // ── Signal markers ────────────────────────────────────────────
     const lastSigId = signalHistory.length > 0 ? signalHistory[0].id : '';
     const markersChanged = signalHistory.length !== prevSignalCountRef.current ||
       lastSigId !== prevLastSignalIdRef.current ||
       (currentSignal && currentSignal.direction !== 'WAIT');
-    
+
     prevSignalCountRef.current = signalHistory.length;
     prevLastSignalIdRef.current = lastSigId;
 
@@ -203,33 +271,28 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
 
       for (const sig of recentHistory) {
         if (sig.direction === 'CALL' || sig.direction === 'PUT') {
-          const rd = sig.resultDetail;
-          let resultLabel = '?';
-          let color = 'hsl(45, 93%, 58%)';
-          if (rd === 'WIN_DIRECT') { resultLabel = '✓'; color = 'hsl(142, 71%, 45%)'; }
-          else if (rd === 'WIN_MG1') { resultLabel = 'MG✓'; color = 'hsl(45, 93%, 58%)'; }
-          else if (rd === 'LOSS_MG1') { resultLabel = 'MG✗'; color = 'hsl(0, 84%, 60%)'; }
-          else if (rd === 'LOSS_DIRECT') { resultLabel = '✗'; color = 'hsl(0, 84%, 60%)'; }
-          else if (sig.result === 'WIN') { resultLabel = '✓'; color = 'hsl(142, 71%, 45%)'; }
-          else if (sig.result === 'LOSS') { resultLabel = '✗'; color = 'hsl(0, 84%, 60%)'; }
-
+          const style = getMarkerStyle(sig, false);
           markers.push({
             time: toChartTime(sig.timestamp.getTime()),
             position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-            color,
-            shape: sig.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
-            text: resultLabel,
+            color: style.color,
+            shape: style.shape,
+            text: style.text,
+            size: 2,
           });
         }
       }
 
+      // Active signal — larger, pulsing-like marker
       if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
+        const style = getMarkerStyle(currentSignal, true);
         markers.push({
           time: toChartTime(currentSignal.timestamp.getTime()),
           position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-          color: 'hsl(45, 93%, 58%)',
-          shape: currentSignal.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
-          text: `${currentSignal.confidence}%`,
+          color: style.color,
+          shape: style.shape,
+          text: style.text,
+          size: 3,
         });
       }
 
@@ -252,44 +315,71 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
         <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
         <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(45, 93%, 58%)' }} /> EMA9
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#ffd600' }} /> EMA9
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(270, 70%, 60%)' }} /> EMA21
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#aa00ff' }} /> EMA21
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'rgba(100, 180, 230, 0.7)' }} /> BB
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(30, 100%, 60%)' }} /> VWAP
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#ff6d00' }} /> VWAP
+          </span>
+          <span className="ml-2 flex items-center gap-2 border-l border-border pl-2">
+            <span>🎯 Win</span>
+            <span>⚡ MG</span>
+            <span>💀 Loss</span>
           </span>
         </div>
       </div>
 
       {activeSignal && (
-        <div className={`flex items-center justify-between px-4 py-2 font-mono text-xs border-b border-border ${
-          activeSignal.direction === 'CALL' ? 'bg-win/10 text-win' : 'bg-loss/10 text-loss'
+        <div className={`flex items-center justify-between px-4 py-2.5 font-mono text-xs border-b transition-all duration-300 ${
+          activeSignal.direction === 'CALL'
+            ? 'bg-gradient-to-r from-[#00e676]/15 via-[#00e676]/5 to-transparent border-[#00e676]/30 text-[#00e676]'
+            : 'bg-gradient-to-r from-[#ff1744]/15 via-[#ff1744]/5 to-transparent border-[#ff1744]/30 text-[#ff1744]'
         }`}>
-          <div className="flex items-center gap-2">
-            <span className="text-base">{activeSignal.direction === 'CALL' ? '▲' : '▼'}</span>
-            <span className="font-bold tracking-wider">{activeSignal.direction}</span>
-            <span className="text-muted-foreground">•</span>
-            <span>{activeSignal.confidence}% confiança</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{activeSignal.pattern}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl animate-pulse">{activeSignal.direction === 'CALL' ? '▲' : '▼'}</span>
+            <div className="flex flex-col">
+              <span className="font-bold tracking-widest text-sm">{activeSignal.direction}</span>
+              <span className="text-[10px] text-muted-foreground">{activeSignal.pattern}</span>
+            </div>
+            <div className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full bg-background/50 border border-border">
+              <span className="text-[10px] text-muted-foreground">Confiança</span>
+              <span className="font-bold">{activeSignal.confidence}%</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-            {activeSignal.rsi != null && <span>RSI {activeSignal.rsi}</span>}
-            {activeSignal.ema200Bias && <span>EMA200 {activeSignal.ema200Bias}</span>}
-            {activeSignal.confluences && <span>{activeSignal.confluences.length} confluências</span>}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              {activeSignal.rsi != null && (
+                <span className={`px-1.5 py-0.5 rounded ${activeSignal.rsi < 30 ? 'bg-[#00e676]/10 text-[#00e676]' : activeSignal.rsi > 70 ? 'bg-[#ff1744]/10 text-[#ff1744]' : ''}`}>
+                  RSI {activeSignal.rsi}
+                </span>
+              )}
+              {activeSignal.ema200Bias && (
+                <span className={`px-1.5 py-0.5 rounded ${
+                  activeSignal.ema200Bias === 'BULL' ? 'bg-[#00e676]/10 text-[#00e676]' :
+                  activeSignal.ema200Bias === 'BEAR' ? 'bg-[#ff1744]/10 text-[#ff1744]' : ''
+                }`}>
+                  EMA200 {activeSignal.ema200Bias}
+                </span>
+              )}
+              {activeSignal.confluences && (
+                <span className="px-1.5 py-0.5 rounded bg-[#ffd600]/10 text-[#ffd600]">
+                  {activeSignal.confluences.length} confluências
+                </span>
+              )}
+            </div>
+            {entryTime && (
+              <EntryTimer
+                entryTime={entryTime}
+                martingaleTime={consecutiveLosses >= 1 ? martingaleTime : null}
+                direction={activeSignal.direction as 'CALL' | 'PUT'}
+              />
+            )}
           </div>
-          {entryTime && (
-            <EntryTimer
-              entryTime={entryTime}
-              martingaleTime={consecutiveLosses >= 1 ? martingaleTime : null}
-              direction={activeSignal.direction as 'CALL' | 'PUT'}
-            />
-          )}
         </div>
       )}
 
