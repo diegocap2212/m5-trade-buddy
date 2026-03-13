@@ -33,6 +33,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
   const bbLowerRef = useRef<ISeriesApi<'Line'> | null>(null);
   const bbMiddleRef = useRef<ISeriesApi<'Line'> | null>(null);
   const vwapRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const markersPrimitiveRef = useRef<any>(null);
 
   // Create chart once
   useEffect(() => {
