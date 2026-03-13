@@ -72,6 +72,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       },
       rightPriceScale: {
         borderColor: 'hsl(210, 10%, 20%)',
+        autoScale: true,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       handleScroll: {
         mouseWheel: true,
