@@ -36,7 +36,7 @@ export function playCallAlert() {
 
 /** Falling two-tone alert for new PUT signal */
 export function playPutAlert() {
-  const ctx = getCtx();
+  
   playTone(784, 0.15, 'sine', 0.18); // G5
   setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120); // E5
   setTimeout(() => playTone(523, 0.3, 'sine', 0.15), 240); // C5
