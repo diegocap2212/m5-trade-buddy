@@ -29,6 +29,22 @@ export function recordResult(detail: ResultDetail, asset: string, timeframe: Tim
   save(results);
 }
 
+export function recordBacktestResults(signals: Array<{ timestamp: Date; resultDetail?: ResultDetail; asset: string }>, timeframe: Timeframe) {
+  const results = load();
+  const existingKeys = new Set(results.map(r => `${r.timestamp}_${r.asset}`));
+  let added = 0;
+  for (const s of signals) {
+    if (!s.resultDetail) continue;
+    const ts = s.timestamp.getTime();
+    const key = `${ts}_${s.asset}`;
+    if (existingKeys.has(key)) continue;
+    results.push({ timestamp: ts, resultDetail: s.resultDetail, asset: s.asset, timeframe });
+    existingKeys.add(key);
+    added++;
+  }
+  if (added > 0) save(results);
+}
+
 export function getResultsSince(sinceMs: number): GlobalResult[] {
   return load().filter(r => r.timestamp >= sinceMs);
 }

@@ -194,6 +194,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       if (result.signals.length > 0) {
         setSignalHistory(result.signals);
         setMG1Stats(result.stats);
+        recordBacktestResults(result.signals, timeframe);
       }
     }
   }, [candles, selectedAsset]);
