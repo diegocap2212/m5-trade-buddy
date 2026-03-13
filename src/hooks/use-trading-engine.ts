@@ -43,9 +43,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     if (!analysis) return;
 
     // Only emit CALL/PUT signals (WAIT means no exhaustion detected)
-    if (analysis.direction === 'WAIT') {
-      // If no active signal, show WAIT state
-      if (!currentSignal || currentSignal.direction === 'WAIT') {
+    // Don't emit new signals while we're still validating a previous one
+    if (analysis.direction === 'WAIT' || pendingValidation.current) {
+      if (analysis.direction === 'WAIT' && (!currentSignal || currentSignal.direction === 'WAIT')) {
         setCurrentSignal({
           id: crypto.randomUUID(),
           asset: selectedAsset,
