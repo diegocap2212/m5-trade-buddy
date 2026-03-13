@@ -75,7 +75,7 @@ const OpportunityItem = ({
           <span className="px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-bold">
             {timeframe}
           </span>
-          <span className="px-1.5 py-0.5 rounded bg-background/50 border border-border text-muted-foreground">
+          <span className="px-2 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-bold text-xs tracking-wide">
             ⏱ {getEntryTime(timeframe)}
           </span>
         </div>
