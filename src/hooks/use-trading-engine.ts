@@ -150,10 +150,24 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     }
   }, [candles]);
 
+  // Run backtest when initial candles load
+  const backtestRan = useRef(false);
+  useEffect(() => {
+    if (candles.length >= 23 && !backtestRan.current) {
+      backtestRan.current = true;
+      const result = backtestCandles(candles, selectedAsset);
+      if (result.signals.length > 0) {
+        setSignalHistory(result.signals);
+        setMG1Stats(result.stats);
+      }
+    }
+  }, [candles, selectedAsset]);
+
   // Reset signal lock when asset changes
   useEffect(() => {
     lockedCandleTimestamp.current = null;
     pendingValidation.current = null;
+    backtestRan.current = false;
     setCurrentSignal(null);
     setSignalHistory([]);
     setMG1Stats({ winsDirect: 0, winsMG1: 0, lossesReal: 0 });

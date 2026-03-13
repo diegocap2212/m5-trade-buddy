@@ -14,6 +14,9 @@ interface SessionStatsProps {
 }
 
 const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: SessionStatsProps) => {
+  const total = (mg1Stats?.winsDirect ?? 0) + (mg1Stats?.winsMG1 ?? 0) + (mg1Stats?.lossesReal ?? 0);
+  const hasBacktest = total > 0;
+
   const stats = [
     { label: 'Win Direto', value: mg1Stats?.winsDirect ?? wins, icon: TrendingUp, color: 'text-win' },
     { label: 'Win MG1', value: mg1Stats?.winsMG1 ?? 0, icon: Shield, color: 'text-pending' },
