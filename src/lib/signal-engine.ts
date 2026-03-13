@@ -85,7 +85,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
   } else if (aboveUpper && rsiOverbought) {
     direction = 'PUT';
     const bandPenetration = bb.upper > 0 ? ((price - bb.upper) / (atr || 1)) * 100 : 0;
-    const rsiExtremity = (rsi - 65) / 35;
+    const rsiExtremity = (rsi - 70) / 30;
     confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço acima da Bollinger Superior');
