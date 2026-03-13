@@ -29,6 +29,8 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const lockedCandleTimestamp = useRef<number | null>(null);
   const pendingValidation = useRef<PendingValidation | null>(null);
   const prevKeyRef = useRef<string>('');
+  const backtestRan = useRef(false);
+  const backtestAssetRef = useRef('');
 
   const { candles, status } = useBinanceWebSocket(selectedAsset, timeframe);
   const connected = status === 'connected';
@@ -186,8 +188,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   }, [candles]);
 
   // Backtest
-  const backtestRan = useRef(false);
-  const backtestAssetRef = useRef('');
   useEffect(() => {
     if (candles.length >= 23 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
       backtestRan.current = true;
