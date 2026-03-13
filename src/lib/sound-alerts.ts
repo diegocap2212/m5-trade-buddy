@@ -1,6 +1,10 @@
 // Web Audio API sound alerts — no external files needed
 
 let audioCtx: AudioContext | null = null;
+let muted = false;
+
+export function isMuted() { return muted; }
+export function setMuted(v: boolean) { muted = v; }
 
 function getCtx(): AudioContext {
   if (!audioCtx) audioCtx = new AudioContext();
