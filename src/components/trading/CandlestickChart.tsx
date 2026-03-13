@@ -18,6 +18,9 @@ interface CandlestickChartProps {
   candles: CandleData[];
   currentSignal?: TradingSignal | null;
   signalHistory?: TradingSignal[];
+  entryTime?: Date;
+  martingaleTime?: Date | null;
+  consecutiveLosses?: number;
 }
 
 function toChartTime(ts: number) {
