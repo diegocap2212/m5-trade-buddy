@@ -5,12 +5,14 @@ import ConnectionStatus from '@/components/trading/ConnectionStatus';
 import SignalCard from '@/components/trading/SignalCard';
 import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
+import RiskManager from '@/components/trading/RiskManager';
+import MarketSession from '@/components/trading/MarketSession';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { Activity } from 'lucide-react';
 
 const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('EUR/USD');
-  const { currentSignal, signalHistory, connected, wins, losses, totalSignals, winRate } =
+  const { currentSignal, signalHistory, connected, wins, losses, totalSignals, winRate, consecutiveLosses } =
     useTradingEngine(selectedAsset);
 
   return (
@@ -31,6 +33,9 @@ const Index = () => {
           </div>
         </header>
 
+        {/* Market Session */}
+        <MarketSession />
+
         {/* Session Stats */}
         <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} />
 
@@ -43,14 +48,26 @@ const Index = () => {
             support={currentSignal.support}
             resistance={currentSignal.resistance}
             pattern={currentSignal.pattern}
+            ema200Bias={currentSignal.ema200Bias}
+            rsi={currentSignal.rsi}
+            stochK={currentSignal.stochK}
+            stochD={currentSignal.stochD}
+            confluences={currentSignal.confluences}
           />
         ) : (
           <div className="flex items-center justify-center h-48 bg-card border border-border rounded-lg">
             <p className="text-muted-foreground font-mono text-sm animate-pulse">
-              Carregando sinais...
+              Analisando confluências...
             </p>
           </div>
         )}
+
+        {/* Risk Manager */}
+        <RiskManager
+          consecutiveLosses={consecutiveLosses}
+          totalLosses={losses}
+          totalSignals={totalSignals}
+        />
 
         {/* Signal History */}
         <SignalHistory
@@ -63,7 +80,7 @@ const Index = () => {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground font-mono">
-          Dados simulados — Conecte uma API para dados reais
+          Dados simulados — Motor de 3 camadas com confluência
         </p>
       </div>
     </div>
