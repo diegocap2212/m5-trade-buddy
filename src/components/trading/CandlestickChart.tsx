@@ -161,13 +161,13 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
   useEffect(() => {
     if (!chartRef.current || candles.length < 2) return;
 
-    const candleData: CandlestickData[] = candles.map((c) => ({
-      time: toChartTime(c.timestamp),
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    // Deduplicate by timestamp (keep last occurrence) to avoid "data must be asc ordered" error
+    const seen = new Map<number, CandlestickData>();
+    for (const c of candles) {
+      const time = toChartTime(c.timestamp);
+      seen.set(time, { time: time as any, open: c.open, high: c.high, low: c.low, close: c.close });
+    }
+    const candleData = Array.from(seen.values()).sort((a, b) => (a.time as number) - (b.time as number));
     candleSeriesRef.current?.setData(candleData);
 
     // EMA 9
