@@ -116,6 +116,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
   const prevCandleCountRef = useRef(0);
   const prevSignalCountRef = useRef(0);
   const prevLastSignalIdRef = useRef('');
+  const [autoScroll, setAutoScroll] = useState(true);
+  const userDragRef = useRef(false);
 
   // Create chart once
   useEffect(() => {
