@@ -28,11 +28,11 @@ function getActiveSessions(): Session[] {
   }
   // New York: 10:00-19:00 BRT (13:00-22:00 UTC)
   if (spHour >= 10 && spHour < 19) {
-    sessions.push({ name: 'Nova York', quality: 'alta', active: true });
+    sessions.push({ name: 'São Paulo', quality: 'alta', active: true });
   }
-  // Overlap London+NY: 10:00-13:00 BRT (13:00-16:00 UTC)
+  // Overlap London+SP: 10:00-13:00 BRT (13:00-16:00 UTC)
   if (spHour >= 10 && spHour < 13) {
-    sessions.push({ name: 'Overlap LDN/NY', quality: 'alta', active: true });
+    sessions.push({ name: 'Overlap LDN/SP', quality: 'alta', active: true });
   }
 
   if (sessions.length === 0) {
