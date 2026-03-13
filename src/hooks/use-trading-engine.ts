@@ -13,7 +13,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const candleCount = candles.length;
   const lastClose = candles.length > 0 ? candles[candles.length - 1].close : 0;
 
-  // Analyze market whenever candles update
+  // Analyze market whenever candles update — only emit signals with ≥80% confidence
   useEffect(() => {
     if (candles.length < 10) return;
 
@@ -22,7 +22,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       const signal: TradingSignal = {
         id: crypto.randomUUID(),
         asset: selectedAsset,
-        direction: analysis.direction,
+        direction: analysis.confidence >= 80 ? analysis.direction : 'WAIT',
         confidence: analysis.confidence,
         price: analysis.price,
         support: analysis.support,
