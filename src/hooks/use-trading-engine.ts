@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import type { TradingSignal, CandleData, Timeframe } from '@/lib/trading-types';
+import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
 
-interface MG1Stats {
+export interface MG1Stats {
   winsDirect: number;
   winsMG1: number;
-  lossesReal: number;
+  lossesMG1: number;
+  lossesDirect: number;
 }
 
 interface PendingValidation {
@@ -20,30 +21,26 @@ interface PendingValidation {
 export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const [currentSignal, setCurrentSignal] = useState<TradingSignal | null>(null);
   const [signalHistory, setSignalHistory] = useState<TradingSignal[]>([]);
-  const [mg1Stats, setMG1Stats] = useState<MG1Stats>({ winsDirect: 0, winsMG1: 0, lossesReal: 0 });
+  const [mg1Stats, setMG1Stats] = useState<MG1Stats>({ winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 });
 
-  // Signal lock: track the candle timestamp that produced the current signal
   const lockedCandleTimestamp = useRef<number | null>(null);
   const pendingValidation = useRef<PendingValidation | null>(null);
 
   const { candles, status } = useBinanceWebSocket(selectedAsset, timeframe);
   const connected = status === 'connected';
 
-  // Analyze market — only emit new signal when a NEW candle forms
+  // Analyze market
   useEffect(() => {
     if (candles.length < 20) return;
 
     const lastCandle = candles[candles.length - 1];
     const lastTimestamp = lastCandle.timestamp;
 
-    // Signal lock: don't re-emit if we already have a signal for this candle
     if (lockedCandleTimestamp.current === lastTimestamp) return;
 
     const analysis = analyzeMarket(candles, selectedAsset);
     if (!analysis) return;
 
-    // Only emit CALL/PUT signals (WAIT means no exhaustion detected)
-    // Don't emit new signals while we're still validating a previous one
     if (analysis.direction === 'WAIT' || pendingValidation.current) {
       if (analysis.direction === 'WAIT' && (!currentSignal || currentSignal.direction === 'WAIT')) {
         setCurrentSignal({
@@ -67,7 +64,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       return;
     }
 
-    // Lock signal to this candle — no more changes until next candle
     lockedCandleTimestamp.current = lastTimestamp;
 
     const signal: TradingSignal = {
@@ -90,7 +86,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
     setCurrentSignal(signal);
 
-    // Set up pending validation — will resolve on next candle(s)
     pendingValidation.current = {
       signal,
       entryPrice: analysis.price,
@@ -99,7 +94,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     };
   }, [candles, selectedAsset]);
 
-  // Validate signal results using real price data
+  // Validate signal results
   useEffect(() => {
     const pv = pendingValidation.current;
     if (!pv || candles.length < 2) return;
@@ -108,7 +103,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     const lastTimestamp = lastCandle.timestamp;
 
     if (pv.state === 'waiting_first') {
-      // We need at least 1 candle AFTER the entry candle
       if (lastTimestamp <= pv.entryCandleTimestamp) return;
 
       const closePrice = lastCandle.close;
@@ -117,18 +111,15 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         : closePrice < pv.entryPrice;
 
       if (isWin) {
-        // Direct win
-        const resolvedSignal = { ...pv.signal, result: 'WIN' as const };
+        const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsDirect: prev.winsDirect + 1 }));
         pendingValidation.current = null;
       } else {
-        // First candle lost — wait for MG1 (next candle)
         pv.state = 'waiting_mg1';
         pv.firstCandleClose = closePrice;
       }
     } else if (pv.state === 'waiting_mg1') {
-      // We need 2 candles after entry
       const candlesSinceEntry = candles.filter(c => c.timestamp > pv.entryCandleTimestamp);
       if (candlesSinceEntry.length < 2) return;
 
@@ -138,19 +129,19 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         : mg1Candle.close < (pv.firstCandleClose ?? pv.entryPrice);
 
       if (isWinMG1) {
-        const resolvedSignal = { ...pv.signal, result: 'WIN' as const };
+        const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_MG1' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsMG1: prev.winsMG1 + 1 }));
       } else {
-        const resolvedSignal = { ...pv.signal, result: 'LOSS' as const };
+        const resolvedSignal = { ...pv.signal, result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
-        setMG1Stats(prev => ({ ...prev, lossesReal: prev.lossesReal + 1 }));
+        setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
       }
       pendingValidation.current = null;
     }
   }, [candles]);
 
-  // Run backtest when initial candles load
+  // Backtest
   const backtestRan = useRef(false);
   useEffect(() => {
     if (candles.length >= 23 && !backtestRan.current) {
@@ -163,19 +154,19 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     }
   }, [candles, selectedAsset]);
 
-  // Reset signal lock when asset changes
+  // Reset on asset change
   useEffect(() => {
     lockedCandleTimestamp.current = null;
     pendingValidation.current = null;
     backtestRan.current = false;
     setCurrentSignal(null);
     setSignalHistory([]);
-    setMG1Stats({ winsDirect: 0, winsMG1: 0, lossesReal: 0 });
+    setMG1Stats({ winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 });
   }, [selectedAsset]);
 
-  const totalDecided = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.lossesReal;
+  const totalDecided = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.lossesMG1 + mg1Stats.lossesDirect;
   const wins = mg1Stats.winsDirect + mg1Stats.winsMG1;
-  const losses = mg1Stats.lossesReal;
+  const losses = mg1Stats.lossesMG1 + mg1Stats.lossesDirect;
   const winRate = totalDecided > 0 ? (wins / totalDecided) * 100 : 0;
 
   let consecutiveLosses = 0;
@@ -184,7 +175,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     else break;
   }
 
-  // Calculate entry times based on timeframe
   const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
   const now = Date.now();
   const nextCandleClose = Math.ceil(now / intervalMs) * intervalMs;

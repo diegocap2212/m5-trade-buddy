@@ -18,27 +18,32 @@ const Index = () => {
     useTradingEngine(selectedAsset, timeframe);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Top Bar */}
-        <header className="flex items-center justify-between bg-card border border-border rounded-lg px-4 py-3">
+    <div className="min-h-screen bg-background p-3 md:p-5">
+      <div className="max-w-7xl mx-auto space-y-3">
+        {/* Header */}
+        <header className="flex items-center justify-between bg-card/80 backdrop-blur-sm border border-border rounded-xl px-5 py-3">
           <div className="flex items-center gap-3">
-            <Activity className="h-5 w-5 text-primary" />
-            <h1 className="font-mono text-sm font-bold text-foreground tracking-wider">
-              TRADING HUD
-            </h1>
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Activity className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h1 className="font-mono text-sm font-bold text-foreground tracking-wider leading-tight">
+                TRADING HUD
+              </h1>
+              <span className="font-mono text-[10px] text-muted-foreground">Exhaustion Reversal</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
             <CandleCountdown timeframe={timeframe} onTimeframeChange={setTimeframe} />
             <ConnectionStatus connected={connected} status={connectionStatus} />
           </div>
         </header>
 
-        {/* Main grid: chart + sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Chart area */}
-          <div className="lg:col-span-3 space-y-4">
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          {/* Chart */}
+          <div className="lg:col-span-3 space-y-3">
             <MarketSession />
             <CandlestickChart
               candles={candles}
@@ -51,7 +56,7 @@ const Index = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-1 space-y-3">
             <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} mg1Stats={mg1Stats} />
             <RiskManager
               consecutiveLosses={consecutiveLosses}
@@ -70,8 +75,8 @@ const Index = () => {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground font-mono">
-          Dados em tempo real via Binance — Motor de 3 camadas com confluência
+        <p className="text-center font-mono text-[10px] text-muted-foreground/50 py-1">
+          Dados em tempo real via Binance • Motor de 3 camadas com confluência
         </p>
       </div>
     </div>

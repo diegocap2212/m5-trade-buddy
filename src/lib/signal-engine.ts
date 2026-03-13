@@ -131,7 +131,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
 export interface BacktestResult {
   signals: import('./trading-types').TradingSignal[];
-  stats: { winsDirect: number; winsMG1: number; lossesReal: number };
+  stats: { winsDirect: number; winsMG1: number; lossesMG1: number; lossesDirect: number };
 }
 
 /**
@@ -141,7 +141,7 @@ export interface BacktestResult {
  */
 export function backtestCandles(candles: CandleData[], asset: string): BacktestResult {
   const signals: import('./trading-types').TradingSignal[] = [];
-  const stats = { winsDirect: 0, winsMG1: 0, lossesReal: 0 };
+  const stats = { winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 };
 
   if (candles.length < 23) return { signals, stats };
 
@@ -165,9 +165,11 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
       : nextCandle.close < entryPrice;
 
     let result: 'WIN' | 'LOSS';
+    let resultDetail: import('./trading-types').ResultDetail;
 
     if (isDirectWin) {
       result = 'WIN';
+      resultDetail = 'WIN_DIRECT';
       stats.winsDirect++;
     } else {
       const isMG1Win = analysis.direction === 'CALL'
@@ -176,10 +178,12 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
 
       if (isMG1Win) {
         result = 'WIN';
+        resultDetail = 'WIN_MG1';
         stats.winsMG1++;
       } else {
         result = 'LOSS';
-        stats.lossesReal++;
+        resultDetail = 'LOSS_MG1';
+        stats.lossesMG1++;
       }
     }
 
@@ -197,6 +201,7 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
       pattern: analysis.pattern,
       timestamp: new Date(candles[i].timestamp),
       result,
+      resultDetail,
       ema200Bias: analysis.ema200Bias,
       rsi: analysis.rsi,
       stochK: analysis.stochK,

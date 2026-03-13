@@ -1,5 +1,6 @@
 export type SignalDirection = 'CALL' | 'PUT' | 'WAIT';
 export type SignalResult = 'WIN' | 'LOSS' | 'PENDING';
+export type ResultDetail = 'WIN_DIRECT' | 'WIN_MG1' | 'LOSS_MG1' | 'LOSS_DIRECT';
 export type MacroBias = 'BULL' | 'BEAR' | 'NEUTRAL';
 export type Timeframe = 'M1' | 'M5';
 
@@ -19,6 +20,7 @@ export interface TradingSignal {
   stochK?: number;
   stochD?: number;
   confluences?: string[];
+  resultDetail?: ResultDetail;
 }
 
 export interface CandleData {
