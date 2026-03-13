@@ -131,7 +131,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
 export interface BacktestResult {
   signals: import('./trading-types').TradingSignal[];
-  stats: { winsDirect: number; winsMG1: number; lossesReal: number };
+  stats: { winsDirect: number; winsMG1: number; lossesMG1: number; lossesDirect: number };
 }
 
 /**
