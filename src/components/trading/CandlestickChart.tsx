@@ -217,49 +217,68 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
   useEffect(() => {
     if (!chartRef.current || candles.length < 2) return;
 
-    const isNewCandle = candles.length !== prevCandleCountRef.current;
-    prevCandleCountRef.current = candles.length;
-
     const seen = new Map<number, CandlestickData>();
     for (const c of candles) {
       const time = toChartTime(c.timestamp);
       seen.set(time, { time: time as any, open: c.open, high: c.high, low: c.low, close: c.close });
     }
     const candleData = Array.from(seen.values()).sort((a, b) => (a.time as number) - (b.time as number));
+    if (candleData.length === 0) return;
 
-    if (isNewCandle) {
-      candleSeriesRef.current?.setData(candleData);
+    const lastTime = candleData[candleData.length - 1].time as number;
+    const isNewCandle = candles.length !== prevCandleCountRef.current;
+    // Detect data reset (asset switch, reconnection) — last time jumped backwards or changed drastically
+    const isDataReset = prevLastTimeRef.current > 0 && Math.abs(lastTime - prevLastTimeRef.current) > 600;
 
-      const ema9Values = calculateEMA(candles, Math.min(9, candles.length));
-      const ema9Data: LineData[] = ema9Values.map((v, i) => ({
-        time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
-        value: v,
-      }));
-      ema9Ref.current?.setData(dedupeLineData(ema9Data));
+    prevCandleCountRef.current = candles.length;
+    prevLastTimeRef.current = lastTime;
 
-      if (candles.length >= 21) {
-        const ema21Values = calculateEMA(candles, 21);
-        const ema21Data: LineData[] = ema21Values.map((v, i) => ({
-          time: toChartTime(candles[candles.length - ema21Values.length + i].timestamp),
+    const needsFullRedraw = isNewCandle || isDataReset;
+
+    try {
+      if (needsFullRedraw) {
+        candleSeriesRef.current?.setData(candleData);
+
+        const ema9Values = calculateEMA(candles, Math.min(9, candles.length));
+        const ema9Data: LineData[] = ema9Values.map((v, i) => ({
+          time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
           value: v,
         }));
-        ema21Ref.current?.setData(dedupeLineData(ema21Data));
-      }
+        ema9Ref.current?.setData(dedupeLineData(ema9Data));
 
-      const bb = computeBBSeries(candles, 20);
-      bbUpperRef.current?.setData(bb.upper);
-      bbMiddleRef.current?.setData(bb.middle);
-      bbLowerRef.current?.setData(bb.lower);
-
-      vwapRef.current?.setData(computeVWAPSeries(candles));
-    } else {
-      const lastPoint = candleData[candleData.length - 1];
-      if (lastPoint) {
-        try {
-          candleSeriesRef.current?.update(lastPoint);
-        } catch {
-          candleSeriesRef.current?.setData(candleData);
+        if (candles.length >= 21) {
+          const ema21Values = calculateEMA(candles, 21);
+          const ema21Data: LineData[] = ema21Values.map((v, i) => ({
+            time: toChartTime(candles[candles.length - ema21Values.length + i].timestamp),
+            value: v,
+          }));
+          ema21Ref.current?.setData(dedupeLineData(ema21Data));
         }
+
+        const bb = computeBBSeries(candles, 20);
+        bbUpperRef.current?.setData(bb.upper);
+        bbMiddleRef.current?.setData(bb.middle);
+        bbLowerRef.current?.setData(bb.lower);
+
+        vwapRef.current?.setData(computeVWAPSeries(candles));
+      } else {
+        // Incremental tick update — only update last candle
+        const lastPoint = candleData[candleData.length - 1];
+        if (lastPoint) {
+          try {
+            candleSeriesRef.current?.update(lastPoint);
+          } catch {
+            candleSeriesRef.current?.setData(candleData);
+          }
+        }
+      }
+    } catch (e) {
+      // Full fallback: if anything fails, do a complete setData
+      console.warn('[Chart] Update error, doing full redraw:', e);
+      try {
+        candleSeriesRef.current?.setData(candleData);
+      } catch {
+        // Chart may have been destroyed
       }
     }
 
