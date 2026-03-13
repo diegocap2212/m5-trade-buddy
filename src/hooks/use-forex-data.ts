@@ -36,9 +36,9 @@ export function generateHistoricalCandles(pair: string, timeframe: Timeframe, co
     const open = price;
     const move1 = (Math.random() - 0.5) * vol * 2;
     const move2 = (Math.random() - 0.5) * vol * 2;
-    const high = Math.max(open, open + Math.abs(move1) + Math.abs(move2) * 0.3);
-    const low = Math.min(open, open - Math.abs(move2) - Math.abs(move1) * 0.3);
     const close = open + (Math.random() - 0.5) * vol * 2;
+    const high = Math.max(open, close, open + Math.abs(move1) + Math.abs(move2) * 0.3);
+    const low = Math.min(open, close, open - Math.abs(move2) - Math.abs(move1) * 0.3);
     price = close;
     candles.push({
       open: +open.toFixed(5),
