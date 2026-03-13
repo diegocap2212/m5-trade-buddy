@@ -141,7 +141,7 @@ export interface BacktestResult {
  */
 export function backtestCandles(candles: CandleData[], asset: string): BacktestResult {
   const signals: import('./trading-types').TradingSignal[] = [];
-  const stats = { winsDirect: 0, winsMG1: 0, lossesReal: 0 };
+  const stats = { winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 };
 
   if (candles.length < 23) return { signals, stats };
 
