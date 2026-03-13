@@ -49,7 +49,7 @@ const Index = () => {
         />
 
         {/* Session Stats */}
-        <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} />
+        <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} mg1Stats={mg1Stats} />
 
         {/* Risk Manager + Martingale */}
         <RiskManager
