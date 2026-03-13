@@ -188,8 +188,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   }, [candles]);
 
   // Backtest
-  const backtestRan = useRef(false);
-  const backtestAssetRef = useRef('');
   useEffect(() => {
     if (candles.length >= 23 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
       backtestRan.current = true;
