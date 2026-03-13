@@ -1,17 +1,29 @@
 import { useEffect, useRef } from 'react';
-import { createChart, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
-import type { CandleData } from '@/lib/trading-types';
+import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
+import type { CandleData, TradingSignal } from '@/lib/trading-types';
 import { calculateEMA, calculateBollingerBands, calculateVWAP } from '@/lib/trading-indicators';
+
+interface SignalMarker {
+  id: string;
+  direction: 'CALL' | 'PUT';
+  confidence: number;
+  timestamp: number;
+  price: number;
+  pattern: string;
+  confluences?: string[];
+}
 
 interface CandlestickChartProps {
   candles: CandleData[];
+  currentSignal?: TradingSignal | null;
+  signalHistory?: TradingSignal[];
 }
 
 function toChartTime(ts: number) {
   return Math.floor(ts / 1000) as any;
 }
 
-const CandlestickChart = ({ candles }: CandlestickChartProps) => {
+const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -21,6 +33,7 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
   const bbLowerRef = useRef<ISeriesApi<'Line'> | null>(null);
   const bbMiddleRef = useRef<ISeriesApi<'Line'> | null>(null);
   const vwapRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const markersPrimitiveRef = useRef<any>(null);
 
   // Create chart once
   useEffect(() => {
@@ -185,11 +198,50 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
     }
     vwapRef.current?.setData(vwapData);
 
+    // Signal markers on candlestick series
+    const markers: any[] = [];
+
+    // Add historical signals
+    for (const sig of signalHistory) {
+      if (sig.direction === 'CALL' || sig.direction === 'PUT') {
+        markers.push({
+          time: toChartTime(sig.timestamp.getTime()),
+          position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+          color: sig.direction === 'CALL' ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)',
+          shape: sig.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
+          text: `${sig.direction} ${sig.confidence}%`,
+        });
+      }
+    }
+
+    // Add current signal
+    if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
+      markers.push({
+        time: toChartTime(currentSignal.timestamp.getTime()),
+        position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+        color: currentSignal.direction === 'CALL' ? 'hsl(142, 71%, 55%)' : 'hsl(0, 84%, 65%)',
+        shape: currentSignal.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
+        text: `${currentSignal.direction} ${currentSignal.confidence}%`,
+      });
+    }
+
+    // Sort markers by time (required by lightweight-charts)
+    markers.sort((a, b) => a.time - b.time);
+    if (markersPrimitiveRef.current) {
+      markersPrimitiveRef.current.setMarkers(markers);
+    } else if (candleSeriesRef.current && markers.length > 0) {
+      markersPrimitiveRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
+    }
+
     chartRef.current?.timeScale().fitContent();
-  }, [candles]);
+  }, [candles, currentSignal?.id, signalHistory.length]);
+
+  // Build compact signal banner
+  const activeSignal = currentSignal && currentSignal.direction !== 'WAIT' ? currentSignal : null;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
+      {/* Header with legend */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
         <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
@@ -211,7 +263,34 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
           </span>
         </div>
       </div>
-      <div ref={containerRef} className="w-full h-[320px]" />
+
+      {/* Active signal banner */}
+      {activeSignal && (
+        <div
+          className={`flex items-center justify-between px-4 py-2 font-mono text-xs border-b border-border ${
+            activeSignal.direction === 'CALL'
+              ? 'bg-green-500/10 text-green-400'
+              : 'bg-red-500/10 text-red-400'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">{activeSignal.direction === 'CALL' ? '▲' : '▼'}</span>
+            <span className="font-bold tracking-wider">{activeSignal.direction}</span>
+            <span className="text-muted-foreground">•</span>
+            <span>{activeSignal.confidence}% confiança</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground">{activeSignal.pattern}</span>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            {activeSignal.rsi != null && <span>RSI {activeSignal.rsi}</span>}
+            {activeSignal.ema200Bias && <span>EMA200 {activeSignal.ema200Bias}</span>}
+            {activeSignal.confluences && <span>{activeSignal.confluences.length} confluências</span>}
+          </div>
+        </div>
+      )}
+
+      {/* Chart */}
+      <div ref={containerRef} className="w-full h-[400px]" />
     </div>
   );
 };

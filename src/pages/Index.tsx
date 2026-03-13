@@ -2,7 +2,6 @@ import { useState } from 'react';
 import AssetSelector from '@/components/trading/AssetSelector';
 import CandleCountdown from '@/components/trading/CandleCountdown';
 import ConnectionStatus from '@/components/trading/ConnectionStatus';
-import SignalCard from '@/components/trading/SignalCard';
 import CandlestickChart from '@/components/trading/CandlestickChart';
 import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
@@ -39,34 +38,15 @@ const Index = () => {
         {/* Market Session */}
         <MarketSession />
 
-        {/* Candlestick Chart */}
-        {candles.length > 0 && <CandlestickChart candles={candles} />}
+        {/* Candlestick Chart with signals */}
+        <CandlestickChart
+          candles={candles}
+          currentSignal={currentSignal}
+          signalHistory={signalHistory}
+        />
 
         {/* Session Stats */}
         <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} />
-
-        {/* Main Signal */}
-        {currentSignal ? (
-          <SignalCard
-            direction={currentSignal.direction}
-            confidence={currentSignal.confidence}
-            price={currentSignal.price}
-            support={currentSignal.support}
-            resistance={currentSignal.resistance}
-            pattern={currentSignal.pattern}
-            ema200Bias={currentSignal.ema200Bias}
-            rsi={currentSignal.rsi}
-            stochK={currentSignal.stochK}
-            stochD={currentSignal.stochD}
-            confluences={currentSignal.confluences}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-48 bg-card border border-border rounded-lg">
-            <p className="text-muted-foreground font-mono text-sm animate-pulse">
-              Analisando confluências...
-            </p>
-          </div>
-        )}
 
         {/* Risk Manager */}
         <RiskManager
