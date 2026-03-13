@@ -201,6 +201,7 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
       pattern: analysis.pattern,
       timestamp: new Date(candles[i].timestamp),
       result,
+      resultDetail,
       ema200Bias: analysis.ema200Bias,
       rsi: analysis.rsi,
       stochK: analysis.stochK,
