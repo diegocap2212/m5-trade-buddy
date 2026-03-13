@@ -62,6 +62,11 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     prevKeyRef.current = newKey;
   }, [selectedAsset, timeframe]);
 
+  // Helper: update a signal in history by ID
+  const updateSignalById = useCallback((id: string, updates: Partial<TradingSignal>) => {
+    setSignalHistory(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  }, []);
+
   // Analyze market
   useEffect(() => {
     if (candles.length < 20) return;
@@ -99,8 +104,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
     lockedCandleTimestamp.current = lastTimestamp;
 
+    const signalId = crypto.randomUUID();
     const signal: TradingSignal = {
-      id: crypto.randomUUID(),
+      id: signalId,
       asset: selectedAsset,
       direction: analysis.direction,
       confidence: analysis.confidence,
@@ -118,6 +124,8 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     };
 
     setCurrentSignal(signal);
+    // Immediately add PENDING signal to history so it's visible
+    setSignalHistory(prev => [signal, ...prev].slice(0, 50));
     
     if (signal.direction === 'CALL') playCallAlert();
     else if (signal.direction === 'PUT') playPutAlert();
@@ -146,8 +154,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         : closePrice < pv.entryPrice;
 
       if (isWin) {
-        const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail };
-        setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
+        const updates = { result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail, resolvedTimestamp: new Date(lastTimestamp) };
+        updateSignalById(pv.signal.id, updates);
+        setCurrentSignal(prev => prev?.id === pv.signal.id ? { ...prev, ...updates } : prev);
         setMG1Stats(prev => ({ ...prev, winsDirect: prev.winsDirect + 1 }));
         recordResult('WIN_DIRECT', selectedAsset, timeframe);
         pendingValidation.current = null;
@@ -167,14 +176,16 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         : mg1Candle.close < (pv.firstCandleClose ?? pv.entryPrice);
 
       if (isWinMG1) {
-        const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_MG1' as ResultDetail };
-        setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
+        const updates = { result: 'WIN' as const, resultDetail: 'WIN_MG1' as ResultDetail, resolvedTimestamp: new Date(mg1Candle.timestamp) };
+        updateSignalById(pv.signal.id, updates);
+        setCurrentSignal(prev => prev?.id === pv.signal.id ? null : prev);
         setMG1Stats(prev => ({ ...prev, winsMG1: prev.winsMG1 + 1 }));
         recordResult('WIN_MG1', selectedAsset, timeframe);
         playWinSound();
       } else {
-        const resolvedSignal = { ...pv.signal, result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail };
-        setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
+        const updates = { result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail, resolvedTimestamp: new Date(mg1Candle.timestamp) };
+        updateSignalById(pv.signal.id, updates);
+        setCurrentSignal(prev => prev?.id === pv.signal.id ? null : prev);
         setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
         recordResult('LOSS_MG1', selectedAsset, timeframe);
         playLossSound();
