@@ -25,16 +25,26 @@ const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: Session
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3">
-      {stats.map((stat) => (
-        <Card key={stat.label} className="bg-card border-border">
-          <CardContent className="p-3 flex flex-col items-center gap-1">
-            <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            <span className={`font-mono text-lg font-bold ${stat.color}`}>{stat.value}</span>
-            <span className="text-xs text-muted-foreground">{stat.label}</span>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-2">
+      {hasBacktest && (
+        <div className="flex items-center gap-2 px-1">
+          <BarChart3 className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground font-mono">
+            Backtest histórico ({total} sinais)
+          </span>
+        </div>
+      )}
+      <div className="grid grid-cols-4 gap-3">
+        {stats.map((stat) => (
+          <Card key={stat.label} className="bg-card border-border">
+            <CardContent className="p-3 flex flex-col items-center gap-1">
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              <span className={`font-mono text-lg font-bold ${stat.color}`}>{stat.value}</span>
+              <span className="text-xs text-muted-foreground">{stat.label}</span>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };
