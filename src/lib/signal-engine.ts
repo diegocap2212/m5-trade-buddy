@@ -32,8 +32,8 @@ export interface SignalAnalysis {
 /**
  * Exhaustion Reversal Strategy
  * 
- * CALL: price closes below lower Bollinger (2.0 dev) AND RSI < 35
- * PUT:  price closes above upper Bollinger (2.0 dev) AND RSI > 65
+ * CALL: price closes below lower Bollinger (2.0 dev) AND RSI < 30
+ * PUT:  price closes above upper Bollinger (2.0 dev) AND RSI > 70
  * 
  * Confidence is calculated from how deep the price penetrates the band
  * and how extreme the RSI is. This produces rare but high-quality signals.
@@ -64,13 +64,13 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
   const belowLower = price < bb.lower;
   const aboveUpper = price > bb.upper;
-  const rsiOversold = rsi < 35;
-  const rsiOverbought = rsi > 65;
+  const rsiOversold = rsi < 30;
+  const rsiOverbought = rsi > 70;
 
   if (belowLower && rsiOversold) {
     direction = 'CALL';
     const bandPenetration = bb.lower > 0 ? ((bb.lower - price) / (atr || 1)) * 100 : 0;
-    const rsiExtremity = (35 - rsi) / 35;
+    const rsiExtremity = (30 - rsi) / 30;
     confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço abaixo da Bollinger Inferior');
@@ -85,7 +85,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
   } else if (aboveUpper && rsiOverbought) {
     direction = 'PUT';
     const bandPenetration = bb.upper > 0 ? ((price - bb.upper) / (atr || 1)) * 100 : 0;
-    const rsiExtremity = (rsi - 65) / 35;
+    const rsiExtremity = (rsi - 70) / 30;
     confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço acima da Bollinger Superior');
@@ -137,7 +137,13 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
 
   if (candles.length < 23) return { signals, stats };
 
+  // Cooldown: after a signal, skip at least 3 candles to avoid overlap
+  // (1 entry candle + 1 validation + 1 MG1 = 3 candles occupied)
+  let cooldownUntil = 0;
+
   for (let i = 20; i < candles.length - 2; i++) {
+    if (i < cooldownUntil) continue;
+
     const slice = candles.slice(0, i + 1);
     const analysis = analyzeMarket(slice, asset);
     if (!analysis || analysis.direction === 'WAIT') continue;
@@ -168,6 +174,9 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
         stats.lossesReal++;
       }
     }
+
+    // Set cooldown: skip next 3 candles (entry + validation + MG1)
+    cooldownUntil = i + 3;
 
     signals.push({
       id: crypto.randomUUID(),
