@@ -70,7 +70,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
   if (belowLower && rsiOversold) {
     direction = 'CALL';
     const bandPenetration = bb.lower > 0 ? ((bb.lower - price) / (atr || 1)) * 100 : 0;
-    const rsiExtremity = (35 - rsi) / 35;
+    const rsiExtremity = (30 - rsi) / 30;
     confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço abaixo da Bollinger Inferior');
