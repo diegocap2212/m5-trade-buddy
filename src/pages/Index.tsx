@@ -9,7 +9,9 @@ import RiskManager from '@/components/trading/RiskManager';
 import MarketSession from '@/components/trading/MarketSession';
 import GlobalAssertiveness from '@/components/trading/GlobalAssertiveness';
 import OperatingModeToggle from '@/components/trading/OperatingModeToggle';
+import OpportunityBanner from '@/components/trading/OpportunityBanner';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
+import { useMultiScanner } from '@/hooks/use-multi-scanner';
 import { Activity, Volume2, VolumeX, FileBarChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Timeframe } from '@/lib/trading-types';
@@ -29,6 +31,7 @@ const Index = () => {
   };
   const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats } =
     useTradingEngine(selectedAsset, timeframe);
+  const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
 
   return (
     <div className="min-h-screen bg-background p-3 md:p-5">
@@ -67,6 +70,14 @@ const Index = () => {
             <ConnectionStatus connected={connected} status={connectionStatus} />
           </div>
         </header>
+
+        {/* Multi-asset opportunity alerts */}
+        <OpportunityBanner
+          opportunities={opportunities}
+          scanning={scanning}
+          onSwitchAsset={setSelectedAsset}
+          onDismiss={dismissOpportunity}
+        />
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
