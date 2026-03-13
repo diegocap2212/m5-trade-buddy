@@ -32,8 +32,8 @@ export interface SignalAnalysis {
 /**
  * Exhaustion Reversal Strategy
  * 
- * CALL: price closes below lower Bollinger (2.0 dev) AND RSI < 35
- * PUT:  price closes above upper Bollinger (2.0 dev) AND RSI > 65
+ * CALL: price closes below lower Bollinger (2.0 dev) AND RSI < 30
+ * PUT:  price closes above upper Bollinger (2.0 dev) AND RSI > 70
  * 
  * Confidence is calculated from how deep the price penetrates the band
  * and how extreme the RSI is. This produces rare but high-quality signals.
