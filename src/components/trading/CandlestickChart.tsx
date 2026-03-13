@@ -227,7 +227,11 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
 
     // Sort markers by time (required by lightweight-charts)
     markers.sort((a, b) => a.time - b.time);
-    candleSeriesRef.current?.setMarkers(markers);
+    if (markersPrimitiveRef.current) {
+      markersPrimitiveRef.current.setMarkers(markers);
+    } else if (candleSeriesRef.current && markers.length > 0) {
+      markersPrimitiveRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
+    }
 
     chartRef.current?.timeScale().fitContent();
   }, [candles, currentSignal?.id, signalHistory.length]);
