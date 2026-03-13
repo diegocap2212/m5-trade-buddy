@@ -39,6 +39,9 @@ const Index = () => {
         {/* Market Session */}
         <MarketSession />
 
+        {/* Candlestick Chart */}
+        {candles.length > 0 && <CandlestickChart candles={candles} />}
+
         {/* Session Stats */}
         <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} />
 
