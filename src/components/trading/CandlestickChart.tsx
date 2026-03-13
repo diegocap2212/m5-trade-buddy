@@ -323,8 +323,10 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       }
     }
 
-    chartRef.current?.timeScale().scrollToRealTime();
-  }, [candles, currentSignal?.id, signalHistory.length]);
+    if (autoScroll) {
+      chartRef.current?.timeScale().scrollToRealTime();
+    }
+  }, [candles, currentSignal?.id, signalHistory.length, autoScroll]);
 
   const activeSignal = currentSignal && currentSignal.direction !== 'WAIT' ? currentSignal : null;
 
