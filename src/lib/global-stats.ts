@@ -25,7 +25,11 @@ function save(results: GlobalResult[]) {
 
 export function recordResult(detail: ResultDetail, asset: string, timeframe: Timeframe) {
   const results = load();
-  results.push({ timestamp: Date.now(), resultDetail: detail, asset, timeframe });
+  // Dedup: avoid recording if a result with same asset in the last 5 seconds exists
+  const now = Date.now();
+  const isDupe = results.some(r => r.asset === asset && r.resultDetail === detail && Math.abs(r.timestamp - now) < 5000);
+  if (isDupe) return;
+  results.push({ timestamp: now, resultDetail: detail, asset, timeframe });
   save(results);
 }
 
