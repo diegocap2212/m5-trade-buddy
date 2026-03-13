@@ -2,82 +2,41 @@ import { useState, useEffect } from 'react';
 import type { TradingSignal, CandleData, Timeframe } from '@/lib/trading-types';
 import { CRYPTO_ASSETS } from '@/lib/trading-types';
 import { analyzeMarket } from '@/lib/signal-engine';
-
-function generateMockCandle(basePrice: number): CandleData {
-  const variance = basePrice * 0.001;
-  const open = basePrice + (Math.random() - 0.5) * variance;
-  const close = open + (Math.random() - 0.5) * variance;
-  const high = Math.max(open, close) + Math.random() * variance * 0.5;
-  const low = Math.min(open, close) - Math.random() * variance * 0.5;
-  const volume = 100 + Math.floor(Math.random() * 500);
-  return { open, high, low, close, timestamp: Date.now(), volume };
-}
+import { useBinanceWebSocket } from './use-binance-ws';
 
 export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
-  const [candles, setCandles] = useState<CandleData[]>([]);
   const [currentSignal, setCurrentSignal] = useState<TradingSignal | null>(null);
   const [signalHistory, setSignalHistory] = useState<TradingSignal[]>([]);
-  const [connected, setConnected] = useState(false);
 
-  const asset = CRYPTO_ASSETS.find(a => a.pair === selectedAsset);
-  const basePrice = asset?.basePrice || 1.0;
+  const { candles, status } = useBinanceWebSocket(selectedAsset, timeframe);
+  const connected = status === 'connected';
 
-  // Update interval: M1 = 5s, M5 = 10s
-  const updateInterval = timeframe === 'M1' ? 5000 : 10000;
-
+  // Analyze market whenever candles update
   useEffect(() => {
-    const timer = setTimeout(() => setConnected(true), 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (candles.length < 10) return;
 
-  // Initialize candles
-  useEffect(() => {
-    const initial: CandleData[] = [];
-    let price = basePrice;
-    for (let i = 0; i < 30; i++) {
-      const candle = generateMockCandle(price);
-      initial.push(candle);
-      price = candle.close;
+    const analysis = analyzeMarket(candles, selectedAsset);
+    if (analysis) {
+      const signal: TradingSignal = {
+        id: crypto.randomUUID(),
+        asset: selectedAsset,
+        direction: analysis.direction,
+        confidence: analysis.confidence,
+        price: analysis.price,
+        support: analysis.support,
+        resistance: analysis.resistance,
+        pattern: analysis.pattern,
+        timestamp: new Date(),
+        result: 'PENDING',
+        ema200Bias: analysis.ema200Bias,
+        rsi: analysis.rsi,
+        stochK: analysis.stochK,
+        stochD: analysis.stochD,
+        confluences: analysis.confluences,
+      };
+      setCurrentSignal(signal);
     }
-    setCandles(initial);
-  }, [basePrice, selectedAsset]);
-
-  // Update signal
-  useEffect(() => {
-    if (candles.length === 0) return;
-
-    const updateSignal = () => {
-      const newCandle = generateMockCandle(candles[candles.length - 1]?.close || basePrice);
-      setCandles(prev => [...prev.slice(-39), newCandle]);
-
-      const allCandles = [...candles.slice(-39), newCandle];
-      const analysis = analyzeMarket(allCandles, selectedAsset);
-      if (analysis) {
-        const signal: TradingSignal = {
-          id: crypto.randomUUID(),
-          asset: selectedAsset,
-          direction: analysis.direction,
-          confidence: analysis.confidence,
-          price: analysis.price,
-          support: analysis.support,
-          resistance: analysis.resistance,
-          pattern: analysis.pattern,
-          timestamp: new Date(),
-          result: 'PENDING',
-          ema200Bias: analysis.ema200Bias,
-          rsi: analysis.rsi,
-          stochK: analysis.stochK,
-          stochD: analysis.stochD,
-          confluences: analysis.confluences,
-        };
-        setCurrentSignal(signal);
-      }
-    };
-
-    updateSignal();
-    const interval = setInterval(updateSignal, updateInterval);
-    return () => clearInterval(interval);
-  }, [candles.length > 0, selectedAsset, updateInterval]);
+  }, [candles, selectedAsset]);
 
   // Resolve signals
   useEffect(() => {
@@ -90,7 +49,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
           };
           return [withResult, ...prev].slice(0, 50);
         });
-      }, timeframe === 'M1' ? 8000 : 15000);
+      }, timeframe === 'M1' ? 60000 : 300000);
       return () => clearTimeout(timer);
     }
   }, [currentSignal?.id]);
@@ -110,6 +69,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     currentSignal,
     signalHistory,
     connected,
+    connectionStatus: status,
     wins,
     losses,
     totalSignals: signalHistory.length,

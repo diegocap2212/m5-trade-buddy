@@ -14,7 +14,7 @@ import type { Timeframe } from '@/lib/trading-types';
 const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('BTC/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M5');
-  const { currentSignal, signalHistory, connected, wins, losses, totalSignals, winRate, consecutiveLosses } =
+  const { currentSignal, signalHistory, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses } =
     useTradingEngine(selectedAsset, timeframe);
 
   return (
@@ -31,7 +31,7 @@ const Index = () => {
           <div className="flex items-center gap-4">
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
             <CandleCountdown timeframe={timeframe} onTimeframeChange={setTimeframe} />
-            <ConnectionStatus connected={connected} />
+            <ConnectionStatus connected={connected} status={connectionStatus} />
           </div>
         </header>
 
@@ -82,7 +82,7 @@ const Index = () => {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground font-mono">
-          Dados simulados — Motor de 3 camadas com confluência
+          Dados em tempo real via Binance — Motor de 3 camadas com confluência
         </p>
       </div>
     </div>
