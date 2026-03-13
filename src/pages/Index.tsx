@@ -82,7 +82,7 @@ const Index = () => {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground font-mono">
-          Dados simulados — Motor de 3 camadas com confluência
+          Dados em tempo real via Binance — Motor de 3 camadas com confluência
         </p>
       </div>
     </div>
