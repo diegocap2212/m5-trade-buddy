@@ -305,7 +305,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
       )}
 
       {/* Chart */}
-      <div ref={containerRef} className="w-full h-[400px]" />
+      <div ref={containerRef} className="w-full h-[520px]" />
     </div>
   );
 };
