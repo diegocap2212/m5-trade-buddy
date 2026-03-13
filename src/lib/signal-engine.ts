@@ -98,6 +98,14 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
     if (pattern && !pattern.bullish) confluences.push(`Padrão: ${pattern.name}`);
   }
 
+  // Filter: require high confidence AND a clear candle pattern
+  const hasPattern = pattern !== null;
+  if (direction !== 'WAIT' && (confidence < 85 || !hasPattern)) {
+    direction = 'WAIT';
+    confidence = 0;
+    confluences.length = 0;
+  }
+
   if (direction === 'WAIT') {
     confidence = 0;
     if (bb.squeeze) confluences.push('Bollinger Squeeze (aguardando rompimento)');
