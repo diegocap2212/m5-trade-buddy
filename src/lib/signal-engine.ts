@@ -64,8 +64,8 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
   const belowLower = price < bb.lower;
   const aboveUpper = price > bb.upper;
-  const rsiOversold = rsi < 35;
-  const rsiOverbought = rsi > 65;
+  const rsiOversold = rsi < 30;
+  const rsiOverbought = rsi > 70;
 
   if (belowLower && rsiOversold) {
     direction = 'CALL';
