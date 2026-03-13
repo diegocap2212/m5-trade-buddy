@@ -189,7 +189,22 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     });
     ro.observe(containerRef.current);
 
+    // Detect manual drag to auto-unlock
+    const container = containerRef.current;
+    const onPointerDown = () => { userDragRef.current = true; };
+    const onPointerUp = () => { userDragRef.current = false; };
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointerup', onPointerUp);
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (userDragRef.current) {
+        setAutoScroll(false);
+      }
+    });
+
     return () => {
+      container.removeEventListener('pointerdown', onPointerDown);
+      container.removeEventListener('pointerup', onPointerUp);
       ro.disconnect();
       chartRef.current = null;
       markersPrimitiveRef.current = null;
