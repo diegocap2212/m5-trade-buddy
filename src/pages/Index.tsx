@@ -19,7 +19,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-2xl mx-auto space-y-4">
+      <div className="max-w-7xl mx-auto space-y-4">
         {/* Top Bar */}
         <header className="flex items-center justify-between bg-card border border-border rounded-lg px-4 py-3">
           <div className="flex items-center gap-3">
@@ -35,41 +35,41 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Market Session */}
-        <MarketSession />
+        {/* Main grid: chart + sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Chart area */}
+          <div className="lg:col-span-3 space-y-4">
+            <MarketSession />
+            <CandlestickChart
+              candles={candles}
+              currentSignal={currentSignal}
+              signalHistory={signalHistory}
+              entryTime={entryTime}
+              martingaleTime={martingaleTime}
+              consecutiveLosses={consecutiveLosses}
+            />
+          </div>
 
-        {/* Candlestick Chart with signals */}
-        <CandlestickChart
-          candles={candles}
-          currentSignal={currentSignal}
-          signalHistory={signalHistory}
-          entryTime={entryTime}
-          martingaleTime={martingaleTime}
-          consecutiveLosses={consecutiveLosses}
-        />
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-4">
+            <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} mg1Stats={mg1Stats} />
+            <RiskManager
+              consecutiveLosses={consecutiveLosses}
+              totalLosses={losses}
+              totalSignals={totalSignals}
+              selectedAsset={selectedAsset}
+              lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
+            />
+            <SignalHistory
+              signals={signalHistory}
+              sessionWinRate={winRate}
+              totalSignals={totalSignals}
+              wins={wins}
+              losses={losses}
+            />
+          </div>
+        </div>
 
-        {/* Session Stats */}
-        <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} mg1Stats={mg1Stats} />
-
-        {/* Risk Manager + Martingale */}
-        <RiskManager
-          consecutiveLosses={consecutiveLosses}
-          totalLosses={losses}
-          totalSignals={totalSignals}
-          selectedAsset={selectedAsset}
-          lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
-        />
-
-        {/* Signal History */}
-        <SignalHistory
-          signals={signalHistory}
-          sessionWinRate={winRate}
-          totalSignals={totalSignals}
-          wins={wins}
-          losses={losses}
-        />
-
-        {/* Footer */}
         <p className="text-center text-xs text-muted-foreground font-mono">
           Dados em tempo real via Binance — Motor de 3 camadas com confluência
         </p>

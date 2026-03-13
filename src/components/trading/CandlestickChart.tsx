@@ -72,6 +72,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       },
       rightPriceScale: {
         borderColor: 'hsl(210, 10%, 20%)',
+        autoScale: true,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       handleScroll: {
         mouseWheel: true,
@@ -227,11 +229,11 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     }
     vwapRef.current?.setData(dedupeLineData(vwapData));
 
-    // Signal markers on candlestick series
+    // Signal markers — limit to last 10 for readability
     const markers: any[] = [];
+    const recentHistory = signalHistory.slice(-10);
 
-    // Add historical signals with WIN/LOSS result
-    for (const sig of signalHistory) {
+    for (const sig of recentHistory) {
       if (sig.direction === 'CALL' || sig.direction === 'PUT') {
         const isWin = sig.result === 'WIN';
         const isLoss = sig.result === 'LOSS';
@@ -247,23 +249,21 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
           position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
           color,
           shape: sig.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
-          text: `${sig.direction} ${resultLabel}`,
+          text: resultLabel,
         });
       }
     }
 
-    // Add current signal (pending)
     if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
       markers.push({
         time: toChartTime(currentSignal.timestamp.getTime()),
         position: currentSignal.direction === 'CALL' ? 'belowBar' : 'aboveBar',
         color: 'hsl(45, 93%, 58%)',
         shape: currentSignal.direction === 'CALL' ? 'arrowUp' : 'arrowDown',
-        text: `${currentSignal.direction} ${currentSignal.confidence}%`,
+        text: `${currentSignal.confidence}%`,
       });
     }
 
-    // Sort markers by time (required by lightweight-charts)
     markers.sort((a, b) => a.time - b.time);
     if (markersPrimitiveRef.current) {
       markersPrimitiveRef.current.setMarkers(markers);
@@ -271,7 +271,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       markersPrimitiveRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
     }
 
-    chartRef.current?.timeScale().fitContent();
+    chartRef.current?.timeScale().scrollToRealTime();
   }, [candles, currentSignal?.id, signalHistory.length]);
 
   // Build compact signal banner
