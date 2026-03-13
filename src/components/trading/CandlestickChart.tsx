@@ -308,25 +308,57 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       for (const c of candles) validTimes.add(toChartTime(c.timestamp));
 
       const markers: any[] = [];
-      const recentHistory = signalHistory.slice(-10);
+      // Use slice(0, 10) — history is newest-first
+      const recentHistory = signalHistory.slice(0, 10);
 
       for (const sig of recentHistory) {
         if (sig.direction === 'CALL' || sig.direction === 'PUT') {
-          const t = toChartTime(sig.timestamp.getTime());
-          if (!validTimes.has(t)) continue;
-          const style = getMarkerStyle(sig, false);
-          markers.push({
-            time: t,
-            position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
-            color: style.color,
-            shape: style.shape,
-            text: style.text,
-            size: 2,
-          });
+          // Entry marker (always render at entry timestamp)
+          const entryT = toChartTime(sig.timestamp.getTime());
+          if (validTimes.has(entryT)) {
+            if (sig.result === 'PENDING') {
+              // Still pending — show entry marker
+              const style = MARKER_CONFIG.PENDING[sig.direction === 'CALL' ? 'call' : 'put'];
+              markers.push({
+                time: entryT,
+                position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+                color: style.color,
+                shape: style.shape,
+                text: style.text,
+                size: 2,
+              });
+            } else {
+              // Resolved — show entry point with direction label
+              markers.push({
+                time: entryT,
+                position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+                color: '#42a5f5',
+                shape: sig.direction === 'CALL' ? 'arrowUp' as const : 'arrowDown' as const,
+                text: `▶ ${sig.direction}`,
+                size: 1,
+              });
+            }
+          }
+
+          // Result marker (render at resolvedTimestamp if available)
+          if (sig.resolvedTimestamp && sig.result !== 'PENDING') {
+            const resultT = toChartTime(sig.resolvedTimestamp.getTime());
+            if (validTimes.has(resultT)) {
+              const style = getMarkerStyle(sig, false);
+              markers.push({
+                time: resultT,
+                position: sig.direction === 'CALL' ? 'belowBar' : 'aboveBar',
+                color: style.color,
+                shape: style.shape,
+                text: style.text,
+                size: 2,
+              });
+            }
+          }
         }
       }
 
-      if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT')) {
+      if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT') && currentSignal.result === 'PENDING') {
         const t = toChartTime(currentSignal.timestamp.getTime());
         if (validTimes.has(t)) {
           const style = getMarkerStyle(currentSignal, true);
