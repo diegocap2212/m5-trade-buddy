@@ -14,7 +14,7 @@ import type { Timeframe } from '@/lib/trading-types';
 const Index = () => {
   const [selectedAsset, setSelectedAsset] = useState('BTC/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M5');
-  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime } =
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats } =
     useTradingEngine(selectedAsset, timeframe);
 
   return (
