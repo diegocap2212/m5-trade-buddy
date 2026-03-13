@@ -7,6 +7,7 @@ import SignalHistory from '@/components/trading/SignalHistory';
 import SessionStats from '@/components/trading/SessionStats';
 import RiskManager from '@/components/trading/RiskManager';
 import MarketSession from '@/components/trading/MarketSession';
+import GlobalAssertiveness from '@/components/trading/GlobalAssertiveness';
 import OperatingModeToggle from '@/components/trading/OperatingModeToggle';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { Activity, Volume2, VolumeX } from 'lucide-react';
