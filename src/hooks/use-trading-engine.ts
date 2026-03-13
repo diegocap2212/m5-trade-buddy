@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
-import { useBinanceWebSocket } from './use-binance-ws';
+import { useMarketData } from './use-market-data';
 import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
 import { useSessionHistory } from './use-session-history';
 import { recordResult, recordBacktestResults } from '@/lib/global-stats';
