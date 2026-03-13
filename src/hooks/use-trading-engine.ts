@@ -4,7 +4,7 @@ import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
 import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
 import { useSessionHistory } from './use-session-history';
-import { recordResult } from '@/lib/global-stats';
+import { recordResult, recordBacktestResults } from '@/lib/global-stats';
 
 export interface MG1Stats {
   winsDirect: number;
@@ -194,6 +194,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       if (result.signals.length > 0) {
         setSignalHistory(result.signals);
         setMG1Stats(result.stats);
+        recordBacktestResults(result.signals, timeframe);
       }
     }
   }, [candles, selectedAsset]);
