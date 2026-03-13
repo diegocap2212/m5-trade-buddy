@@ -172,11 +172,13 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         const resolvedSignal = { ...pv.signal, result: 'WIN' as const, resultDetail: 'WIN_MG1' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, winsMG1: prev.winsMG1 + 1 }));
+        recordResult('WIN_MG1', selectedAsset, timeframe);
         playWinSound();
       } else {
         const resolvedSignal = { ...pv.signal, result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail };
         setSignalHistory(prev => [resolvedSignal, ...prev].slice(0, 50));
         setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
+        recordResult('LOSS_MG1', selectedAsset, timeframe);
         playLossSound();
       }
       pendingValidation.current = null;
