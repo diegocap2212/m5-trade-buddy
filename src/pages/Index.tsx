@@ -47,6 +47,12 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link to="/relatorio">
+              <button className="h-8 px-2.5 rounded-lg border border-border bg-secondary/50 flex items-center gap-1.5 hover:bg-secondary transition-colors font-mono text-[10px] text-muted-foreground">
+                <FileBarChart className="h-3.5 w-3.5" />
+                Relatório
+              </button>
+            </Link>
             <OperatingModeToggle operating={operating} onToggle={setOperating} />
             <div className="w-px h-6 bg-border" />
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
