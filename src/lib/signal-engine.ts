@@ -165,9 +165,11 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
       : nextCandle.close < entryPrice;
 
     let result: 'WIN' | 'LOSS';
+    let resultDetail: import('./trading-types').ResultDetail;
 
     if (isDirectWin) {
       result = 'WIN';
+      resultDetail = 'WIN_DIRECT';
       stats.winsDirect++;
     } else {
       const isMG1Win = analysis.direction === 'CALL'
@@ -176,10 +178,12 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
 
       if (isMG1Win) {
         result = 'WIN';
+        resultDetail = 'WIN_MG1';
         stats.winsMG1++;
       } else {
         result = 'LOSS';
-        stats.lossesReal++;
+        resultDetail = 'LOSS_MG1';
+        stats.lossesMG1++;
       }
     }
 
