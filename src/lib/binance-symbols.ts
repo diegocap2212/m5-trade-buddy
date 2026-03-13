@@ -21,8 +21,21 @@ export function getBinanceInterval(tf: Timeframe): string {
   return tf === 'M1' ? '1m' : '5m';
 }
 
-export function getBinanceStreamUrl(pair: string, tf: Timeframe): string {
+/** Multiple WebSocket endpoints for failover — ordered by reliability */
+const WS_ENDPOINTS = [
+  'wss://stream.binance.com:9443/ws',
+  'wss://stream.binance.com:443/ws',
+  'wss://data-stream.binance.com/ws',
+];
+
+export function getBinanceStreamUrls(pair: string, tf: Timeframe): string[] {
   const symbol = getBinanceSymbol(pair);
   const interval = getBinanceInterval(tf);
-  return `wss://stream.binance.com:9443/ws/${symbol}@kline_${interval}`;
+  const stream = `${symbol}@kline_${interval}`;
+  return WS_ENDPOINTS.map(base => `${base}/${stream}`);
+}
+
+/** Keep legacy single-URL for compatibility */
+export function getBinanceStreamUrl(pair: string, tf: Timeframe): string {
+  return getBinanceStreamUrls(pair, tf)[0];
 }
