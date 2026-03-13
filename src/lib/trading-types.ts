@@ -1,5 +1,6 @@
 export type SignalDirection = 'CALL' | 'PUT' | 'WAIT';
 export type SignalResult = 'WIN' | 'LOSS' | 'PENDING';
+export type MacroBias = 'BULL' | 'BEAR' | 'NEUTRAL';
 
 export interface TradingSignal {
   id: string;
@@ -12,6 +13,12 @@ export interface TradingSignal {
   pattern: string;
   timestamp: Date;
   result: SignalResult;
+  // New fields from confluence engine
+  ema200Bias?: MacroBias;
+  rsi?: number;
+  stochK?: number;
+  stochD?: number;
+  confluences?: string[];
 }
 
 export interface CandleData {
@@ -20,6 +27,7 @@ export interface CandleData {
   low: number;
   close: number;
   timestamp: number;
+  volume: number;
 }
 
 export const FOREX_PAIRS = [
