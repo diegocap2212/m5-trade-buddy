@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TradingSignal, CandleData, Timeframe } from '@/lib/trading-types';
-import { analyzeMarket } from '@/lib/signal-engine';
+import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
 
 interface MG1Stats {
