@@ -1,6 +1,6 @@
 import { X, ArrowUpCircle, ArrowDownCircle, Radar } from 'lucide-react';
 import type { ScannerOpportunity } from '@/hooks/use-multi-scanner';
-import { playSignalSound } from '@/lib/sound-alerts';
+import { playCallAlert, playPutAlert } from '@/lib/sound-alerts';
 import { useEffect, useRef } from 'react';
 
 interface OpportunityBannerProps {
