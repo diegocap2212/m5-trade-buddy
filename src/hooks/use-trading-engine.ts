@@ -5,6 +5,7 @@ import { useMarketData } from './use-market-data';
 import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
 import { useSessionHistory } from './use-session-history';
 import { recordResult, recordBacktestResults } from '@/lib/global-stats';
+import type { ScannerOpportunity } from './use-multi-scanner';
 
 export interface MG1Stats {
   winsDirect: number;
@@ -19,6 +20,22 @@ interface PendingValidation {
   entryCandleTimestamp: number;
   state: 'waiting_first' | 'waiting_mg1';
   firstCandleClose?: number;
+}
+
+/**
+ * Get closed candles only (exclude the currently forming candle).
+ */
+function getClosedCandles(candles: CandleData[], timeframe: Timeframe): CandleData[] {
+  if (candles.length < 2) return candles;
+  const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
+  const now = Date.now();
+  const currentCandleTs = Math.floor(now / intervalMs) * intervalMs;
+  const last = candles[candles.length - 1];
+  // If the last candle's timestamp matches the current forming candle, exclude it
+  if (last.timestamp >= currentCandleTs) {
+    return candles.slice(0, -1);
+  }
+  return candles;
 }
 
 export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
@@ -45,11 +62,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   useEffect(() => {
     const newKey = `${selectedAsset}_${timeframe}`;
     if (prevKeyRef.current && prevKeyRef.current !== newKey) {
-      // Save outgoing session using refs to avoid stale closures
       const [prevAsset, prevTf] = prevKeyRef.current.split('_') as [string, Timeframe];
       sessionHistory.saveSession(prevAsset, prevTf, signalHistoryRef.current, mg1StatsRef.current);
 
-      // Load incoming session
       const restored = sessionHistory.switchSession(selectedAsset, timeframe);
       setSignalHistory(restored.signals);
       setMG1Stats(restored.stats);
@@ -67,16 +82,60 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     setSignalHistory(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   }, []);
 
-  // Analyze market
-  useEffect(() => {
-    if (candles.length < 20) return;
+  /**
+   * Commit an external opportunity as a PENDING signal.
+   * Called when user clicks "ABRIR" on the scanner banner.
+   */
+  const commitOpportunity = useCallback((opp: ScannerOpportunity) => {
+    // Don't commit if we already have a pending validation
+    if (pendingValidation.current) return;
 
-    const lastCandle = candles[candles.length - 1];
+    const signalId = crypto.randomUUID();
+    const signal: TradingSignal = {
+      id: signalId,
+      asset: opp.asset,
+      direction: opp.analysis.direction,
+      confidence: opp.analysis.confidence,
+      price: opp.analysis.price,
+      support: opp.analysis.support,
+      resistance: opp.analysis.resistance,
+      pattern: opp.analysis.pattern,
+      timestamp: new Date(opp.entryTimestamp),
+      result: 'PENDING',
+      ema200Bias: opp.analysis.ema200Bias,
+      rsi: opp.analysis.rsi,
+      stochK: opp.analysis.stochK,
+      stochD: opp.analysis.stochD,
+      confluences: opp.analysis.confluences,
+    };
+
+    setCurrentSignal(signal);
+    setSignalHistory(prev => [signal, ...prev].slice(0, 50));
+
+    if (signal.direction === 'CALL') playCallAlert();
+    else if (signal.direction === 'PUT') playPutAlert();
+
+    // Use closeTimestamp as entry candle reference for validation
+    lockedCandleTimestamp.current = opp.closeTimestamp;
+    pendingValidation.current = {
+      signal,
+      entryPrice: opp.analysis.price,
+      entryCandleTimestamp: opp.closeTimestamp,
+      state: 'waiting_first',
+    };
+  }, []);
+
+  // Analyze market using CLOSED candles only
+  useEffect(() => {
+    const closedCandles = getClosedCandles(candles, timeframe);
+    if (closedCandles.length < 20) return;
+
+    const lastCandle = closedCandles[closedCandles.length - 1];
     const lastTimestamp = lastCandle.timestamp;
 
     if (lockedCandleTimestamp.current === lastTimestamp) return;
 
-    const analysis = analyzeMarket(candles, selectedAsset);
+    const analysis = analyzeMarket(closedCandles, selectedAsset);
     if (!analysis) return;
 
     if (analysis.direction === 'WAIT' || pendingValidation.current) {
@@ -135,26 +194,28 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       entryCandleTimestamp: lastTimestamp,
       state: 'waiting_first',
     };
-  }, [candles, selectedAsset]);
+  }, [candles, selectedAsset, timeframe]);
 
-  // Validate signal results
+  // Validate signal results using CLOSED candles
   useEffect(() => {
     const pv = pendingValidation.current;
     if (!pv || candles.length < 2) return;
 
-    const lastCandle = candles[candles.length - 1];
-    const lastTimestamp = lastCandle.timestamp;
+    // Use closed candles for validation
+    const closedCandles = getClosedCandles(candles, timeframe);
 
     if (pv.state === 'waiting_first') {
-      if (lastTimestamp <= pv.entryCandleTimestamp) return;
+      // Find first closed candle after entry
+      const validationCandle = closedCandles.find(c => c.timestamp > pv.entryCandleTimestamp);
+      if (!validationCandle) return;
 
-      const closePrice = lastCandle.close;
+      const closePrice = validationCandle.close;
       const isWin = pv.signal.direction === 'CALL'
         ? closePrice > pv.entryPrice
         : closePrice < pv.entryPrice;
 
       if (isWin) {
-        const updates = { result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail, resolvedTimestamp: new Date(lastTimestamp) };
+        const updates = { result: 'WIN' as const, resultDetail: 'WIN_DIRECT' as ResultDetail, resolvedTimestamp: new Date(validationCandle.timestamp) };
         updateSignalById(pv.signal.id, updates);
         setCurrentSignal(prev => prev?.id === pv.signal.id ? { ...prev, ...updates } : prev);
         setMG1Stats(prev => ({ ...prev, winsDirect: prev.winsDirect + 1 }));
@@ -167,10 +228,11 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         playMG1Alert();
       }
     } else if (pv.state === 'waiting_mg1') {
-      const candlesSinceEntry = candles.filter(c => c.timestamp > pv.entryCandleTimestamp);
-      if (candlesSinceEntry.length < 2) return;
+      // Find two closed candles after entry
+      const candlesAfterEntry = closedCandles.filter(c => c.timestamp > pv.entryCandleTimestamp);
+      if (candlesAfterEntry.length < 2) return;
 
-      const mg1Candle = candlesSinceEntry[1];
+      const mg1Candle = candlesAfterEntry[1];
       const isWinMG1 = pv.signal.direction === 'CALL'
         ? mg1Candle.close > (pv.firstCandleClose ?? pv.entryPrice)
         : mg1Candle.close < (pv.firstCandleClose ?? pv.entryPrice);
@@ -192,18 +254,16 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       }
       pendingValidation.current = null;
     }
-  }, [candles]);
+  }, [candles, timeframe]);
 
   // Backtest
   useEffect(() => {
     if (candles.length >= 23 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
       backtestRan.current = true;
       backtestAssetRef.current = selectedAsset;
-      // Verify candles belong to current asset by checking we have fresh data
       const result = backtestCandles(candles, selectedAsset);
       if (result.signals.length > 0) {
         setSignalHistory(prev => {
-          // Merge: keep existing real-time signals, add backtest signals that don't overlap
           const existingTimes = new Set(prev.map(s => s.timestamp.getTime()));
           const newSignals = result.signals.filter(s => !existingTimes.has(s.timestamp.getTime()));
           if (newSignals.length === 0) return prev;
@@ -252,5 +312,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     martingaleTime,
     mg1Stats,
     sessionHistory,
+    commitOpportunity,
   };
 }
