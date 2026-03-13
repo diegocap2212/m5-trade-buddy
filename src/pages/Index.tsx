@@ -105,6 +105,7 @@ const Index = () => {
           onDismiss={dismissOpportunity}
           pinnedOpportunity={pinnedOpportunity}
           onDismissPinned={handleDismissPinned}
+          timeframe={timeframe}
         />
 
         {/* Main Grid */}

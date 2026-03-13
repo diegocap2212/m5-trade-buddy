@@ -130,6 +130,7 @@ const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, 
           pinned
           onAction={() => {}}
           onDismiss={onDismissPinned}
+          timeframe={timeframe}
         />
       )}
       {opportunities.map((opp) => (
@@ -138,6 +139,7 @@ const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, 
           opp={opp}
           onAction={() => onSwitchAsset(opp.asset)}
           onDismiss={() => onDismiss(opp.asset)}
+          timeframe={timeframe}
         />
       ))}
     </div>

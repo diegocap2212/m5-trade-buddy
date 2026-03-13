@@ -17,9 +17,8 @@ interface CandlestickChartProps {
 
 /** Convert ms timestamp to lightweight-charts time in São Paulo (BRT) timezone */
 export function toChartTime(ts: number) {
-  const d = new Date(ts);
-  const sp = new Date(d.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  return Math.floor(sp.getTime() / 1000) as any;
+  const BRT_OFFSET = -3 * 3600; // UTC-3 fixo
+  return (Math.floor(ts / 1000) + BRT_OFFSET) as any;
 }
 
 function dedupeLineData(data: LineData[]): LineData[] {

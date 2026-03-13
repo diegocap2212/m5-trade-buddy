@@ -32,7 +32,7 @@ const CandleCountdown = ({ timeframe, onTimeframeChange }: CandleCountdownProps)
     };
 
     updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    const interval = setInterval(updateCountdown, 250);
     return () => clearInterval(interval);
   }, [minutes_interval]);
 
