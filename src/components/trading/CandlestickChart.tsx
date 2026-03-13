@@ -76,8 +76,8 @@ const MARKER_CONFIG = {
     put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '✗ LOSS' },
   },
   PENDING: {
-    call: { shape: 'arrowUp' as const, color: '#ffd600', text: '⏳' },
-    put:  { shape: 'arrowDown' as const, color: '#ffd600', text: '⏳' },
+    call: { shape: 'arrowUp' as const, color: '#ffd600', text: '⏳ ENTRY' },
+    put:  { shape: 'arrowDown' as const, color: '#ffd600', text: '⏳ ENTRY' },
   },
   ACTIVE: {
     call: { shape: 'arrowUp' as const, color: '#00e676', text: '' },
