@@ -283,22 +283,25 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     }
 
     // ── Entry price line ──────────────────────────────────────────
-    if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT') && currentSignal.result === 'PENDING') {
-      const entryPrice = currentSignal.price;
-      const lineColor = currentSignal.direction === 'CALL' ? '#00e676' : '#ff1744';
-      entryLineRef.current?.applyOptions({
-        color: lineColor,
-        title: `⇢ ${currentSignal.direction} @ ${entryPrice.toFixed(2)}`,
-      });
-      // Draw a flat line across visible range
-      const firstTime = toChartTime(candles[0].timestamp);
-      const lastTime = toChartTime(candles[candles.length - 1].timestamp);
-      entryLineRef.current?.setData([
-        { time: firstTime, value: entryPrice },
-        { time: lastTime, value: entryPrice },
-      ]);
-    } else {
-      entryLineRef.current?.setData([]);
+    try {
+      if (currentSignal && (currentSignal.direction === 'CALL' || currentSignal.direction === 'PUT') && currentSignal.result === 'PENDING') {
+        const entryPrice = currentSignal.price;
+        const lineColor = currentSignal.direction === 'CALL' ? '#00e676' : '#ff1744';
+        entryLineRef.current?.applyOptions({
+          color: lineColor,
+          title: `⇢ ${currentSignal.direction} @ ${entryPrice.toFixed(2)}`,
+        });
+        const firstTime = toChartTime(candles[0].timestamp);
+        const lt = toChartTime(candles[candles.length - 1].timestamp);
+        entryLineRef.current?.setData([
+          { time: firstTime, value: entryPrice },
+          { time: lt, value: entryPrice },
+        ]);
+      } else {
+        entryLineRef.current?.setData([]);
+      }
+    } catch {
+      // Entry line update failed — non-critical
     }
 
     // ── Signal markers ────────────────────────────────────────────
