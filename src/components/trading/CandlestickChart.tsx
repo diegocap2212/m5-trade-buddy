@@ -6,6 +6,8 @@ import { Lock, Unlock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EntryTimer from './EntryTimer';
 
+import type { Timeframe } from '@/lib/trading-types';
+
 interface CandlestickChartProps {
   candles: CandleData[];
   currentSignal?: TradingSignal | null;
@@ -13,6 +15,8 @@ interface CandlestickChartProps {
   entryTime?: Date;
   martingaleTime?: Date | null;
   consecutiveLosses?: number;
+  timeframe?: Timeframe;
+  onTimeframeChange?: (tf: Timeframe) => void;
 }
 
 /** Convert ms timestamp to lightweight-charts time in São Paulo (BRT) timezone */
