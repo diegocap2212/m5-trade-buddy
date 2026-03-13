@@ -32,7 +32,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const backtestRan = useRef(false);
   const backtestAssetRef = useRef('');
 
-  const { candles, status } = useBinanceWebSocket(selectedAsset, timeframe);
+  const { candles, status } = useMarketData(selectedAsset, timeframe);
   const connected = status === 'connected';
 
   const sessionHistory = useSessionHistory();

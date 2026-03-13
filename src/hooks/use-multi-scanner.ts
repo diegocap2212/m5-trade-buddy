@@ -43,7 +43,8 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
   const lastAlertRef = useRef<Record<string, number>>({});
 
   const scan = useCallback(async () => {
-    const assetsToScan = ALL_PAIRS.filter(p => p !== activeAsset);
+    // Only scan Binance (crypto) pairs — forex needs a separate polling mechanism
+    const assetsToScan = CRYPTO_PAIRS.filter(p => p !== activeAsset);
     setScanning(true);
 
     const results: ScannerOpportunity[] = [];
