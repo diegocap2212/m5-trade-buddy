@@ -3,6 +3,8 @@ import type { ScannerOpportunity } from '@/hooks/use-multi-scanner';
 import { playCallAlert, playPutAlert } from '@/lib/sound-alerts';
 import { useEffect, useRef } from 'react';
 
+import type { Timeframe } from '@/lib/trading-types';
+
 interface OpportunityBannerProps {
   opportunities: ScannerOpportunity[];
   scanning: boolean;
@@ -10,6 +12,7 @@ interface OpportunityBannerProps {
   onDismiss: (asset: string) => void;
   pinnedOpportunity?: ScannerOpportunity | null;
   onDismissPinned?: () => void;
+  timeframe: Timeframe;
 }
 
 const OpportunityItem = ({
