@@ -18,6 +18,7 @@ interface CandlestickChartProps {
   consecutiveLosses?: number;
   timeframe?: Timeframe;
   onTimeframeChange?: (tf: Timeframe) => void;
+  dataSourceLabel?: DataSourceLabel;
 }
 
 /** Convert ms timestamp to lightweight-charts time in São Paulo (BRT) timezone */
