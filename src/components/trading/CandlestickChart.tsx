@@ -407,11 +407,20 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
 
   const activeSignal = currentSignal && currentSignal.direction !== 'WAIT' ? currentSignal : null;
 
+  const sourceInfo = DATA_SOURCE_LABELS[dataSourceLabel] || DATA_SOURCE_LABELS.simulated;
+  const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+  const now = new Date();
+  const utcStr = now.toISOString().slice(11, 19);
+  const brtStr = new Date(now.getTime() - 3 * 3600_000).toISOString().slice(11, 19);
+
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+          <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border border-border ${sourceInfo.color}`}>
+            {sourceInfo.label}
+          </span>
           {timeframe && onTimeframeChange && (
             <div className="flex bg-secondary rounded-md overflow-hidden border border-border ml-2">
               <button
