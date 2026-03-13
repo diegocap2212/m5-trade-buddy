@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getBinanceSymbol, getBinanceInterval } from '@/lib/binance-symbols';
 import { analyzeMarket, type SignalAnalysis } from '@/lib/signal-engine';
 import type { CandleData, Timeframe } from '@/lib/trading-types';
-import { CRYPTO_PAIRS, FOREX_PAIRS, getAssetSource } from '@/lib/trading-types';
-import { generateHistoricalCandles } from './use-forex-data';
+import { CRYPTO_PAIRS, FOREX_PAIRS } from '@/lib/trading-types';
+import { getForexSnapshot } from '@/lib/forex-candle-cache';
 
 const SCAN_INTERVAL = 15_000;
 const CANDLE_FETCH_LIMIT = 50;
@@ -13,6 +13,14 @@ export interface ScannerOpportunity {
   asset: string;
   analysis: SignalAnalysis;
   timestamp: number;
+  /** When the entry should happen (T-1s before candle close) */
+  entryTimestamp: number;
+  /** When the candle closes */
+  closeTimestamp: number;
+  /** Opportunity expires after this (close + 1 candle margin) */
+  expiresAt: number;
+  /** Whether user committed this opportunity (clicked ABRIR) */
+  committed?: boolean;
 }
 
 async function fetchBinanceCandles(pair: string, timeframe: Timeframe): Promise<CandleData[]> {
@@ -30,15 +38,13 @@ async function fetchBinanceCandles(pair: string, timeframe: Timeframe): Promise<
   } catch { return []; }
 }
 
-function fetchForexCandles(pair: string, timeframe: Timeframe): CandleData[] {
-  return generateHistoricalCandles(pair, timeframe, CANDLE_FETCH_LIMIT);
-}
-
 export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
   const [opportunities, setOpportunities] = useState<ScannerOpportunity[]>([]);
   const [scanning, setScanning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const lastAlertRef = useRef<Record<string, number>>({});
+
+  const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
 
   const scan = useCallback(async () => {
     const cryptoToScan = CRYPTO_PAIRS.filter(p => p !== activeAsset);
@@ -46,6 +52,10 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
     setScanning(true);
 
     const results: ScannerOpportunity[] = [];
+    const now = Date.now();
+    const nextClose = Math.ceil(now / intervalMs) * intervalMs;
+    const entryTs = nextClose - 1000;
+    const expiresAt = nextClose + intervalMs; // 1 candle margin after close
 
     const processCandles = (asset: string, candles: CandleData[]) => {
       if (candles.length < 20) return null;
@@ -57,7 +67,14 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
       if (Date.now() - lastAlert < 60_000) return null;
 
       lastAlertRef.current[key] = Date.now();
-      return { asset, analysis, timestamp: Date.now() };
+      return {
+        asset,
+        analysis,
+        timestamp: Date.now(),
+        entryTimestamp: entryTs,
+        closeTimestamp: nextClose,
+        expiresAt,
+      };
     };
 
     // Scan crypto in batches of 3
@@ -71,16 +88,21 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
       for (const r of batchResults) if (r) results.push(r);
     }
 
-    // Scan forex (synchronous — simulated data)
+    // Scan forex using shared cache (deterministic, same data as chart)
     for (const asset of forexToScan) {
-      const candles = fetchForexCandles(asset, timeframe);
+      const candles = getForexSnapshot(asset, timeframe, CANDLE_FETCH_LIMIT);
       const r = processCandles(asset, candles);
       if (r) results.push(r);
     }
 
     setOpportunities(prev => {
-      const cutoff = Date.now() - 60_000;
-      const recent = prev.filter(o => o.timestamp > cutoff && o.asset !== activeAsset);
+      const now = Date.now();
+      // Filter by expiresAt instead of fixed 60s TTL
+      const recent = prev.filter(o =>
+        o.expiresAt > now &&
+        o.asset !== activeAsset &&
+        !results.some(r => r.asset === o.asset)
+      );
       const merged = [...results, ...recent];
       const byAsset = new Map<string, ScannerOpportunity>();
       for (const o of merged) byAsset.set(o.asset, o);
@@ -88,7 +110,7 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
     });
 
     setScanning(false);
-  }, [activeAsset, timeframe]);
+  }, [activeAsset, timeframe, intervalMs]);
 
   useEffect(() => {
     const initialTimeout = setTimeout(scan, 3000);
@@ -96,9 +118,22 @@ export function useMultiScanner(activeAsset: string, timeframe: Timeframe) {
     return () => { clearTimeout(initialTimeout); clearInterval(timerRef.current); };
   }, [scan]);
 
+  // Remove active asset from opportunities
   useEffect(() => {
     setOpportunities(prev => prev.filter(o => o.asset !== activeAsset));
   }, [activeAsset]);
+
+  // Expire opportunities based on expiresAt
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setOpportunities(prev => {
+        const filtered = prev.filter(o => o.expiresAt > now);
+        return filtered.length !== prev.length ? filtered : prev;
+      });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const dismissOpportunity = useCallback((asset: string) => {
     setOpportunities(prev => prev.filter(o => o.asset !== asset));

@@ -32,19 +32,37 @@ const Index = () => {
     setSoundMuted(next);
     setMuted(next);
   };
-  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats } =
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity } =
     useTradingEngine(selectedAsset, timeframe);
   const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
+
+  // Ref to hold the pending commit so we can apply it after asset switch
+  const pendingCommitRef = useRef<ScannerOpportunity | null>(null);
+
+  const handleCommit = useCallback((opp: ScannerOpportunity) => {
+    // Store the opportunity to commit after asset switch completes
+    pendingCommitRef.current = opp;
+  }, []);
 
   const handleSwitchAsset = useCallback((asset: string) => {
     const opp = opportunities.find(o => o.asset === asset);
     if (opp) {
       setPinnedOpportunity(opp);
       clearTimeout(pinnedTimerRef.current);
-      pinnedTimerRef.current = setTimeout(() => setPinnedOpportunity(null), 60_000);
+      // Use candle-based expiry instead of fixed 60s
+      const ttl = Math.max(opp.expiresAt - Date.now(), 10_000);
+      pinnedTimerRef.current = setTimeout(() => setPinnedOpportunity(null), ttl);
     }
     setSelectedAsset(asset);
   }, [opportunities]);
+
+  // Apply pending commit after asset switch and engine re-initialization
+  useEffect(() => {
+    if (pendingCommitRef.current && pendingCommitRef.current.asset === selectedAsset) {
+      commitOpportunity(pendingCommitRef.current);
+      pendingCommitRef.current = null;
+    }
+  }, [selectedAsset, commitOpportunity]);
 
   const handleDismissPinned = useCallback(() => {
     setPinnedOpportunity(null);
@@ -106,6 +124,7 @@ const Index = () => {
           pinnedOpportunity={pinnedOpportunity}
           onDismissPinned={handleDismissPinned}
           timeframe={timeframe}
+          onCommit={handleCommit}
         />
 
         {/* Main Grid */}

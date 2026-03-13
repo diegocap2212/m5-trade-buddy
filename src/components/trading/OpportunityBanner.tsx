@@ -1,7 +1,7 @@
-import { X, ArrowUpCircle, ArrowDownCircle, Radar, Pin } from 'lucide-react';
+import { X, ArrowUpCircle, ArrowDownCircle, Radar, Pin, Clock } from 'lucide-react';
 import type { ScannerOpportunity } from '@/hooks/use-multi-scanner';
 import { playCallAlert, playPutAlert } from '@/lib/sound-alerts';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Timeframe } from '@/lib/trading-types';
 
@@ -13,6 +13,7 @@ interface OpportunityBannerProps {
   pinnedOpportunity?: ScannerOpportunity | null;
   onDismissPinned?: () => void;
   timeframe: Timeframe;
+  onCommit?: (opp: ScannerOpportunity) => void;
 }
 
 function getEntryTime(timeframe: Timeframe): string {
@@ -20,6 +21,24 @@ function getEntryTime(timeframe: Timeframe): string {
   const entryTs = Math.ceil(Date.now() / intervalMs) * intervalMs - 1000;
   const d = new Date(entryTs);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+}
+
+function getTemporalStatus(opp: ScannerOpportunity): { label: string; urgent: boolean } {
+  const now = Date.now();
+  const msToEntry = opp.entryTimestamp - now;
+  const msToClose = opp.closeTimestamp - now;
+
+  if (msToClose < 0) {
+    return { label: 'EM VALIDAÇÃO', urgent: false };
+  }
+  if (msToEntry <= 5000) {
+    return { label: 'ENTRAR AGORA', urgent: true };
+  }
+  if (msToEntry <= 15000) {
+    const secs = Math.ceil(msToEntry / 1000);
+    return { label: `ENTRADA EM ${secs}s`, urgent: true };
+  }
+  return { label: 'AGUARDANDO', urgent: false };
 }
 
 const OpportunityItem = ({
@@ -36,6 +55,16 @@ const OpportunityItem = ({
   timeframe: Timeframe;
 }) => {
   const isCall = opp.analysis.direction === 'CALL';
+  const [status, setStatus] = useState(getTemporalStatus(opp));
+
+  // Update temporal status every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStatus(getTemporalStatus(opp));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [opp]);
+
   return (
     <div
       className={`flex items-center justify-between px-4 py-2.5 rounded-xl border font-mono text-xs transition-all duration-500 animate-in slide-in-from-top-2 ${
@@ -78,6 +107,15 @@ const OpportunityItem = ({
           <span className="px-2 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-bold text-xs tracking-wide">
             ⏱ {getEntryTime(timeframe)}
           </span>
+          {/* Temporal status badge */}
+          <span className={`flex items-center gap-1 px-2 py-1 rounded font-bold text-[9px] tracking-widest ${
+            status.urgent
+              ? 'bg-[#ffd600]/20 border border-[#ffd600]/40 text-[#ffd600] animate-pulse'
+              : 'bg-muted/30 border border-border text-muted-foreground'
+          }`}>
+            <Clock className="h-3 w-3" />
+            {status.label}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -104,7 +142,7 @@ const OpportunityItem = ({
   );
 };
 
-const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, pinnedOpportunity, onDismissPinned, timeframe }: OpportunityBannerProps) => {
+const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, pinnedOpportunity, onDismissPinned, timeframe, onCommit }: OpportunityBannerProps) => {
   const lastSoundRef = useRef<string>('');
 
   useEffect(() => {
@@ -137,7 +175,10 @@ const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, 
         <OpportunityItem
           key={`${opp.asset}_${opp.timestamp}`}
           opp={opp}
-          onAction={() => onSwitchAsset(opp.asset)}
+          onAction={() => {
+            onCommit?.(opp);
+            onSwitchAsset(opp.asset);
+          }}
           onDismiss={() => onDismiss(opp.asset)}
           timeframe={timeframe}
         />
