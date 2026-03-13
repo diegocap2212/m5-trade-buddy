@@ -109,7 +109,13 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   return MARKER_CONFIG.PENDING[dir];
 }
 
-const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0, timeframe, onTimeframeChange }: CandlestickChartProps) => {
+const DATA_SOURCE_LABELS: Record<string, { label: string; color: string }> = {
+  binance: { label: 'BINANCE LIVE', color: 'text-[#f0b90b]' },
+  twelvedata: { label: 'TWELVE DATA', color: 'text-[#00e676]' },
+  simulated: { label: 'SIMULADO', color: 'text-[#ff1744]' },
+};
+
+const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTime, martingaleTime, consecutiveLosses = 0, timeframe, onTimeframeChange, dataSourceLabel = 'binance' }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
