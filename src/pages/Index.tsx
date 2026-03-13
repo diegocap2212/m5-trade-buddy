@@ -48,11 +48,13 @@ const Index = () => {
         {/* Session Stats */}
         <SessionStats wins={wins} losses={losses} totalSignals={totalSignals} winRate={winRate} />
 
-        {/* Risk Manager */}
+        {/* Risk Manager + Martingale */}
         <RiskManager
           consecutiveLosses={consecutiveLosses}
           totalLosses={losses}
           totalSignals={totalSignals}
+          selectedAsset={selectedAsset}
+          lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
         />
 
         {/* Signal History */}
