@@ -114,6 +114,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
   const entryLineRef = useRef<ISeriesApi<'Line'> | null>(null);
   const markersPrimitiveRef = useRef<any>(null);
   const prevCandleCountRef = useRef(0);
+  const prevLastTimeRef = useRef(0);
   const prevSignalCountRef = useRef(0);
   const prevLastSignalIdRef = useRef('');
   const [autoScroll, setAutoScroll] = useState(true);
