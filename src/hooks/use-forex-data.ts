@@ -2,14 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CandleData, Timeframe } from '@/lib/trading-types';
 import type { WsStatus } from './use-binance-ws';
 
-/**
- * Forex data hook using simulated price data based on realistic random walk.
- * In production, this would connect to a real Forex data provider (TwelveData, Polygon, etc.)
- * For now, generates realistic candle data for analysis and signal generation.
- */
-
 const CANDLE_BUFFER = 200;
-const POLL_INTERVAL_MS = 3000; // poll every 3s
+const POLL_INTERVAL_MS = 3000;
 
 // Base prices for forex pairs (approximate)
 const FOREX_BASE_PRICES: Record<string, number> = {
@@ -24,12 +18,12 @@ const FOREX_BASE_PRICES: Record<string, number> = {
 
 function getVolatility(pair: string): number {
   const base = FOREX_BASE_PRICES[pair] ?? 1;
-  // JPY pairs have higher absolute moves
   if (pair.includes('JPY')) return base * 0.0003;
   return base * 0.00015;
 }
 
-function generateHistoricalCandles(pair: string, timeframe: Timeframe, count: number): CandleData[] {
+/** Exported for testing */
+export function generateHistoricalCandles(pair: string, timeframe: Timeframe, count: number): CandleData[] {
   const intervalMs = timeframe === 'M1' ? 60_000 : 300_000;
   const now = Date.now();
   const startTs = Math.floor(now / intervalMs) * intervalMs - (count * intervalMs);
@@ -42,9 +36,9 @@ function generateHistoricalCandles(pair: string, timeframe: Timeframe, count: nu
     const open = price;
     const move1 = (Math.random() - 0.5) * vol * 2;
     const move2 = (Math.random() - 0.5) * vol * 2;
-    const high = Math.max(open, open + Math.abs(move1) + Math.abs(move2) * 0.3);
-    const low = Math.min(open, open - Math.abs(move2) - Math.abs(move1) * 0.3);
     const close = open + (Math.random() - 0.5) * vol * 2;
+    const high = Math.max(open, close, open + Math.abs(move1) + Math.abs(move2) * 0.3);
+    const low = Math.min(open, close, open - Math.abs(move2) - Math.abs(move1) * 0.3);
     price = close;
     candles.push({
       open: +open.toFixed(5),
@@ -58,7 +52,9 @@ function generateHistoricalCandles(pair: string, timeframe: Timeframe, count: nu
   return candles;
 }
 
-export function useForexData(pair: string, timeframe: Timeframe) {
+const EMPTY: CandleData[] = [];
+
+export function useForexData(pair: string, timeframe: Timeframe, enabled = true) {
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [status, setStatus] = useState<WsStatus>('disconnected');
   const currentPairRef = useRef(pair);
@@ -79,7 +75,6 @@ export function useForexData(pair: string, timeframe: Timeframe) {
         const now = Date.now();
         const currentCandleTs = Math.floor(now / intervalMs) * intervalMs;
 
-        // Same candle — update tick
         if (last.timestamp === currentCandleTs) {
           const move = (Math.random() - 0.5) * vol;
           const newClose = +(last.close + move).toFixed(5);
@@ -93,18 +88,13 @@ export function useForexData(pair: string, timeframe: Timeframe) {
           return [...prev.slice(0, -1), updated];
         }
 
-        // New candle
         const open = priceRef.current;
         const move = (Math.random() - 0.5) * vol;
         const close = +(open + move).toFixed(5);
         priceRef.current = close;
         const newCandle: CandleData = {
-          open,
-          high: Math.max(open, close),
-          low: Math.min(open, close),
-          close,
-          volume: Math.floor(Math.random() * 5000 + 500),
-          timestamp: currentCandleTs,
+          open, high: Math.max(open, close), low: Math.min(open, close), close,
+          volume: Math.floor(Math.random() * 5000 + 500), timestamp: currentCandleTs,
         };
         const next = [...prev, newCandle];
         return next.length > CANDLE_BUFFER ? next.slice(-CANDLE_BUFFER) : next;
@@ -113,15 +103,20 @@ export function useForexData(pair: string, timeframe: Timeframe) {
   }, [pair, timeframe]);
 
   useEffect(() => {
+    if (!enabled) {
+      clearInterval(timerRef.current);
+      setCandles([]);
+      setStatus('disconnected');
+      return;
+    }
+
     currentPairRef.current = pair;
     currentTfRef.current = timeframe;
     priceRef.current = FOREX_BASE_PRICES[pair] ?? 1;
 
-    // Reset
     setCandles([]);
     setStatus('connecting');
 
-    // Generate historical data
     const historical = generateHistoricalCandles(pair, timeframe, 50);
     priceRef.current = historical[historical.length - 1].close;
     setCandles(historical);
@@ -129,10 +124,8 @@ export function useForexData(pair: string, timeframe: Timeframe) {
 
     startPolling();
 
-    return () => {
-      clearInterval(timerRef.current);
-    };
-  }, [pair, timeframe, startPolling]);
+    return () => { clearInterval(timerRef.current); };
+  }, [pair, timeframe, enabled, startPolling]);
 
-  return { candles, status };
+  return { candles: enabled ? candles : EMPTY, status: enabled ? status : ('disconnected' as WsStatus) };
 }

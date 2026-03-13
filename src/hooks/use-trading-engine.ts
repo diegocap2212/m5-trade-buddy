@@ -31,27 +31,23 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const prevKeyRef = useRef<string>('');
   const backtestRan = useRef(false);
   const backtestAssetRef = useRef('');
+  const signalHistoryRef = useRef(signalHistory);
+  const mg1StatsRef = useRef(mg1Stats);
+  signalHistoryRef.current = signalHistory;
+  mg1StatsRef.current = mg1Stats;
 
   const { candles, status } = useMarketData(selectedAsset, timeframe);
   const connected = status === 'connected';
 
   const sessionHistory = useSessionHistory();
 
-  // Save current session before switching
-  const saveCurrentSession = useCallback(() => {
-    if (prevKeyRef.current) {
-      const [prevAsset, prevTf] = prevKeyRef.current.split('_') as [string, Timeframe];
-      sessionHistory.saveSession(prevAsset, prevTf, signalHistory, mg1Stats);
-    }
-  }, [signalHistory, mg1Stats, sessionHistory]);
-
   // Handle asset/timeframe change — persist and restore
   useEffect(() => {
     const newKey = `${selectedAsset}_${timeframe}`;
     if (prevKeyRef.current && prevKeyRef.current !== newKey) {
-      // Save outgoing session
+      // Save outgoing session using refs to avoid stale closures
       const [prevAsset, prevTf] = prevKeyRef.current.split('_') as [string, Timeframe];
-      sessionHistory.saveSession(prevAsset, prevTf, signalHistory, mg1Stats);
+      sessionHistory.saveSession(prevAsset, prevTf, signalHistoryRef.current, mg1StatsRef.current);
 
       // Load incoming session
       const restored = sessionHistory.switchSession(selectedAsset, timeframe);
@@ -60,7 +56,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       
       lockedCandleTimestamp.current = null;
       pendingValidation.current = null;
-      backtestRan.current = restored.signals.length > 0; // skip backtest if session already has data
+      backtestRan.current = restored.signals.length > 0;
       setCurrentSignal(null);
     }
     prevKeyRef.current = newKey;
