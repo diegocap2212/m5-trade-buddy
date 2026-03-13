@@ -221,7 +221,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
       const vwap = calculateVWAP(slice);
       vwapData.push({ time: toChartTime(candles[i].timestamp), value: vwap });
     }
-    vwapRef.current?.setData(vwapData);
+    vwapRef.current?.setData(dedupeLineData(vwapData));
 
     // Signal markers on candlestick series
     const markers: any[] = [];
