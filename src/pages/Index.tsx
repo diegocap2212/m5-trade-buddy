@@ -112,6 +112,8 @@ const Index = () => {
           </div>
         </div>
 
+        <GlobalAssertiveness refreshTrigger={signalHistory.length} />
+
         <p className="text-center font-mono text-[10px] text-muted-foreground/50 py-1">
           Dados em tempo real via Binance • Motor de 3 camadas com confluência
         </p>
