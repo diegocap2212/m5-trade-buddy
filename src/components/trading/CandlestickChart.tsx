@@ -315,6 +315,13 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
             {activeSignal.ema200Bias && <span>EMA200 {activeSignal.ema200Bias}</span>}
             {activeSignal.confluences && <span>{activeSignal.confluences.length} confluências</span>}
           </div>
+          {entryTime && (
+            <EntryTimer
+              entryTime={entryTime}
+              martingaleTime={consecutiveLosses >= 1 ? martingaleTime : null}
+              direction={activeSignal.direction as 'CALL' | 'PUT'}
+            />
+          )}
         </div>
       )}
 
