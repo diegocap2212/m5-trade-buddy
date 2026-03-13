@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
 import type { CandleData, TradingSignal } from '@/lib/trading-types';
 import { calculateEMA, calculateBollingerBands } from '@/lib/trading-indicators';
+import { Lock, Unlock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EntryTimer from './EntryTimer';
 
 interface CandlestickChartProps {
