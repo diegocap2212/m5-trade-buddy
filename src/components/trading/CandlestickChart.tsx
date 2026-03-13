@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
 import type { CandleData, TradingSignal } from '@/lib/trading-types';
 import { calculateEMA, calculateBollingerBands } from '@/lib/trading-indicators';
+import { Lock, Unlock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EntryTimer from './EntryTimer';
 
 interface CandlestickChartProps {
@@ -114,6 +116,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
   const prevCandleCountRef = useRef(0);
   const prevSignalCountRef = useRef(0);
   const prevLastSignalIdRef = useRef('');
+  const [autoScroll, setAutoScroll] = useState(true);
+  const userDragRef = useRef(false);
 
   // Create chart once
   useEffect(() => {
@@ -185,7 +189,22 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     });
     ro.observe(containerRef.current);
 
+    // Detect manual drag to auto-unlock
+    const container = containerRef.current;
+    const onPointerDown = () => { userDragRef.current = true; };
+    const onPointerUp = () => { userDragRef.current = false; };
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointerup', onPointerUp);
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (userDragRef.current) {
+        setAutoScroll(false);
+      }
+    });
+
     return () => {
+      container.removeEventListener('pointerdown', onPointerDown);
+      container.removeEventListener('pointerup', onPointerUp);
       ro.disconnect();
       chartRef.current = null;
       markersPrimitiveRef.current = null;
@@ -304,15 +323,46 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
       }
     }
 
-    chartRef.current?.timeScale().scrollToRealTime();
-  }, [candles, currentSignal?.id, signalHistory.length]);
+    if (autoScroll) {
+      chartRef.current?.timeScale().scrollToRealTime();
+    }
+  }, [candles, currentSignal?.id, signalHistory.length, autoScroll]);
+
+  const handleToggleScroll = useCallback(() => {
+    setAutoScroll(prev => {
+      if (!prev) chartRef.current?.timeScale().scrollToRealTime();
+      return !prev;
+    });
+  }, []);
 
   const activeSignal = currentSignal && currentSignal.direction !== 'WAIT' ? currentSignal : null;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-        <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleToggleScroll}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-mono transition-all ${
+                    autoScroll
+                      ? 'bg-primary/10 text-primary border border-primary/30'
+                      : 'bg-muted/50 text-muted-foreground border border-border hover:bg-muted'
+                  }`}
+                >
+                  {autoScroll ? <Lock size={12} /> : <Unlock size={12} />}
+                  {!autoScroll && <span className="tracking-wider">LIVRE</span>}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="text-xs">{autoScroll ? 'Gráfico travado no tempo real — clique para navegar livremente' : 'Navegação livre — clique para voltar ao tempo real'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#ffd600' }} /> EMA9
