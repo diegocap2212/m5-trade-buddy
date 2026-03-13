@@ -1,6 +1,10 @@
 // Web Audio API sound alerts — no external files needed
 
 let audioCtx: AudioContext | null = null;
+let muted = false;
+
+export function isMuted() { return muted; }
+export function setMuted(v: boolean) { muted = v; }
 
 function getCtx(): AudioContext {
   if (!audioCtx) audioCtx = new AudioContext();
@@ -9,6 +13,7 @@ function getCtx(): AudioContext {
 }
 
 function playTone(freq: number, duration: number, type: OscillatorType = 'sine', gain = 0.15) {
+  if (muted) return;
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
@@ -23,7 +28,7 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
 
 /** Rising two-tone alert for new CALL signal */
 export function playCallAlert() {
-  const ctx = getCtx();
+  
   playTone(523, 0.15, 'sine', 0.18); // C5
   setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120); // E5
   setTimeout(() => playTone(784, 0.3, 'sine', 0.15), 240); // G5
@@ -31,7 +36,7 @@ export function playCallAlert() {
 
 /** Falling two-tone alert for new PUT signal */
 export function playPutAlert() {
-  const ctx = getCtx();
+  
   playTone(784, 0.15, 'sine', 0.18); // G5
   setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120); // E5
   setTimeout(() => playTone(523, 0.3, 'sine', 0.15), 240); // C5
