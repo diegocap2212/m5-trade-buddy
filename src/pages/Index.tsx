@@ -71,6 +71,14 @@ const Index = () => {
           </div>
         </header>
 
+        {/* Multi-asset opportunity alerts */}
+        <OpportunityBanner
+          opportunities={opportunities}
+          scanning={scanning}
+          onSwitchAsset={setSelectedAsset}
+          onDismiss={dismissOpportunity}
+        />
+
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
           {/* Chart */}
