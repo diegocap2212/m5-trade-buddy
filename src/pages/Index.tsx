@@ -142,6 +142,7 @@ const Index = () => {
               consecutiveLosses={consecutiveLosses}
               timeframe={timeframe}
               onTimeframeChange={setTimeframe}
+              dataSourceLabel={dataSourceLabel}
             />
           </div>
 

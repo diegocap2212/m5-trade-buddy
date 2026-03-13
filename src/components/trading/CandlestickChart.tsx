@@ -467,6 +467,15 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
+          {lastCandle && (
+            <span className="text-foreground font-bold mr-1">
+              {lastCandle.close.toFixed(lastCandle.close > 50 ? 2 : 5)}
+            </span>
+          )}
+          <span className="text-[9px] opacity-70" title="UTC / BRT">
+            {utcStr} UTC | {brtStr} BRT
+          </span>
+          <span className="w-px h-3 bg-border" />
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#ffd600' }} /> EMA9
           </span>
