@@ -94,12 +94,13 @@ function calcStats(results: GlobalResult[]): PeriodStats {
   const total = winsDirect + winsMG1 + lossesMG1 + lossesDirect;
   const wins = winsDirect + winsMG1;
   const losses = lossesMG1 + lossesDirect;
+  const directOnly = winsDirect + lossesDirect;
   return {
     total,
     wins,
     losses,
     winRateWithMG: total > 0 ? (wins / total) * 100 : 0,
-    winRateWithoutMG: total > 0 ? (winsDirect / total) * 100 : 0,
+    winRateWithoutMG: directOnly > 0 ? (winsDirect / directOnly) * 100 : 0,
     winsDirect,
     winsMG1,
   };
