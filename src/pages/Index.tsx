@@ -31,7 +31,7 @@ const Index = () => {
           <div className="flex items-center gap-4">
             <AssetSelector value={selectedAsset} onValueChange={setSelectedAsset} />
             <CandleCountdown timeframe={timeframe} onTimeframeChange={setTimeframe} />
-            <ConnectionStatus connected={connected} />
+            <ConnectionStatus connected={connected} status={connectionStatus} />
           </div>
         </header>
 
