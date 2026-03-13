@@ -137,7 +137,13 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
 
   if (candles.length < 23) return { signals, stats };
 
+  // Cooldown: after a signal, skip at least 3 candles to avoid overlap
+  // (1 entry candle + 1 validation + 1 MG1 = 3 candles occupied)
+  let cooldownUntil = 0;
+
   for (let i = 20; i < candles.length - 2; i++) {
+    if (i < cooldownUntil) continue;
+
     const slice = candles.slice(0, i + 1);
     const analysis = analyzeMarket(slice, asset);
     if (!analysis || analysis.direction === 'WAIT') continue;
