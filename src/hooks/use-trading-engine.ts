@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useBinanceWebSocket } from './use-binance-ws';
+import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
 
 export interface MG1Stats {
   winsDirect: number;
