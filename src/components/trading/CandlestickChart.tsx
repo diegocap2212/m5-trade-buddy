@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createChart, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
+import { createChart, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, type CandlestickData, type LineData, ColorType } from 'lightweight-charts';
 import type { CandleData } from '@/lib/trading-types';
 import { calculateEMA, calculateBollingerBands, calculateVWAP } from '@/lib/trading-indicators';
 
@@ -29,24 +29,24 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
     const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: 'hsl(210 10% 50%)',
+        textColor: 'hsl(210, 10%, 50%)',
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: 'hsl(210 10% 15%)' },
-        horzLines: { color: 'hsl(210 10% 15%)' },
+        vertLines: { color: 'hsl(210, 10%, 15%)' },
+        horzLines: { color: 'hsl(210, 10%, 15%)' },
       },
       crosshair: {
-        vertLine: { color: 'hsl(210 10% 30%)', labelBackgroundColor: 'hsl(210 10% 20%)' },
-        horzLine: { color: 'hsl(210 10% 30%)', labelBackgroundColor: 'hsl(210 10% 20%)' },
+        vertLine: { color: 'hsl(210, 10%, 30%)', labelBackgroundColor: 'hsl(210, 10%, 20%)' },
+        horzLine: { color: 'hsl(210, 10%, 30%)', labelBackgroundColor: 'hsl(210, 10%, 20%)' },
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: 'hsl(210 10% 20%)',
+        borderColor: 'hsl(210, 10%, 20%)',
       },
       rightPriceScale: {
-        borderColor: 'hsl(210 10% 20%)',
+        borderColor: 'hsl(210, 10%, 20%)',
       },
       handleScroll: true,
       handleScale: true,
@@ -54,38 +54,33 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
 
     chartRef.current = chart;
 
-    // Candlestick series
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: 'hsl(142 71% 45%)',
-      downColor: 'hsl(0 84% 60%)',
-      borderUpColor: 'hsl(142 71% 45%)',
-      borderDownColor: 'hsl(0 84% 60%)',
-      wickUpColor: 'hsl(142 71% 45%)',
-      wickDownColor: 'hsl(0 84% 60%)',
+    candleSeriesRef.current = chart.addSeries(CandlestickSeries, {
+      upColor: 'hsl(142, 71%, 45%)',
+      downColor: 'hsl(0, 84%, 60%)',
+      borderUpColor: 'hsl(142, 71%, 45%)',
+      borderDownColor: 'hsl(0, 84%, 60%)',
+      wickUpColor: 'hsl(142, 71%, 45%)',
+      wickDownColor: 'hsl(0, 84%, 60%)',
     });
-    candleSeriesRef.current = candleSeries;
 
-    // EMA 9
-    ema9Ref.current = chart.addLineSeries({
-      color: 'hsl(45 93% 58%)',
+    ema9Ref.current = chart.addSeries(LineSeries, {
+      color: 'hsl(45, 93%, 58%)',
       lineWidth: 1,
       title: 'EMA 9',
       priceLineVisible: false,
       lastValueVisible: false,
     });
 
-    // EMA 21
-    ema21Ref.current = chart.addLineSeries({
-      color: 'hsl(270 70% 60%)',
+    ema21Ref.current = chart.addSeries(LineSeries, {
+      color: 'hsl(270, 70%, 60%)',
       lineWidth: 1,
       title: 'EMA 21',
       priceLineVisible: false,
       lastValueVisible: false,
     });
 
-    // Bollinger Upper
-    bbUpperRef.current = chart.addLineSeries({
-      color: 'hsla(200, 80%, 60%, 0.5)',
+    bbUpperRef.current = chart.addSeries(LineSeries, {
+      color: 'rgba(100, 180, 230, 0.5)',
       lineWidth: 1,
       lineStyle: 2,
       title: 'BB+',
@@ -93,18 +88,16 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
       lastValueVisible: false,
     });
 
-    // Bollinger Middle
-    bbMiddleRef.current = chart.addLineSeries({
-      color: 'hsla(200, 80%, 60%, 0.3)',
+    bbMiddleRef.current = chart.addSeries(LineSeries, {
+      color: 'rgba(100, 180, 230, 0.3)',
       lineWidth: 1,
       lineStyle: 1,
       priceLineVisible: false,
       lastValueVisible: false,
     });
 
-    // Bollinger Lower
-    bbLowerRef.current = chart.addLineSeries({
-      color: 'hsla(200, 80%, 60%, 0.5)',
+    bbLowerRef.current = chart.addSeries(LineSeries, {
+      color: 'rgba(100, 180, 230, 0.5)',
       lineWidth: 1,
       lineStyle: 2,
       title: 'BB-',
@@ -112,16 +105,14 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
       lastValueVisible: false,
     });
 
-    // VWAP
-    vwapRef.current = chart.addLineSeries({
-      color: 'hsl(30 100% 60%)',
+    vwapRef.current = chart.addSeries(LineSeries, {
+      color: 'hsl(30, 100%, 60%)',
       lineWidth: 2,
       title: 'VWAP',
       priceLineVisible: false,
       lastValueVisible: false,
     });
 
-    // Resize observer
     const ro = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
       chart.applyOptions({ width, height });
@@ -139,7 +130,6 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
   useEffect(() => {
     if (!chartRef.current || candles.length < 2) return;
 
-    // Candlestick data
     const candleData: CandlestickData[] = candles.map((c) => ({
       time: toChartTime(c.timestamp),
       open: c.open,
@@ -170,7 +160,6 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
     // Bollinger Bands
     const period = Math.min(20, candles.length);
     if (candles.length >= period) {
-      // Calculate BB for each candle window
       const bbUpper: LineData[] = [];
       const bbMiddle: LineData[] = [];
       const bbLower: LineData[] = [];
@@ -187,7 +176,7 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
       bbLowerRef.current?.setData(bbLower);
     }
 
-    // VWAP (rolling)
+    // VWAP
     const vwapData: LineData[] = [];
     for (let i = 0; i < candles.length; i++) {
       const slice = candles.slice(0, i + 1);
@@ -196,7 +185,6 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
     }
     vwapRef.current?.setData(vwapData);
 
-    // Fit content
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
 
@@ -204,21 +192,21 @@ const CandlestickChart = ({ candles }: CandlestickChartProps) => {
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
-        <div className="flex items-center gap-3 font-mono text-[10px]">
+        <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(45 93% 58%)' }} />
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(45, 93%, 58%)' }} />
             EMA9
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(270 70% 60%)' }} />
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(270, 70%, 60%)' }} />
             EMA21
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(200 80% 60%)' }} />
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'rgba(100, 180, 230, 0.7)' }} />
             BB
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(30 100% 60%)' }} />
+            <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'hsl(30, 100%, 60%)' }} />
             VWAP
           </span>
         </div>
