@@ -15,8 +15,11 @@ interface CandlestickChartProps {
   consecutiveLosses?: number;
 }
 
-function toChartTime(ts: number) {
-  return Math.floor(ts / 1000) as any;
+/** Convert ms timestamp to lightweight-charts time in São Paulo (BRT) timezone */
+export function toChartTime(ts: number) {
+  const d = new Date(ts);
+  const sp = new Date(d.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  return Math.floor(sp.getTime() / 1000) as any;
 }
 
 function dedupeLineData(data: LineData[]): LineData[] {

@@ -11,16 +11,12 @@ const STALE_THRESHOLD = 30000;
 export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 
 interface BinanceKline {
-  t: number;
-  o: string;
-  h: string;
-  l: string;
-  c: string;
-  v: string;
-  x: boolean;
+  t: number; o: string; h: string; l: string; c: string; v: string; x: boolean;
 }
 
-export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
+const EMPTY: CandleData[] = [];
+
+export function useBinanceWebSocket(pair: string, timeframe: Timeframe, enabled = true) {
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [status, setStatus] = useState<WsStatus>('disconnected');
 
@@ -32,8 +28,6 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
   const endpointIndex = useRef(0);
   const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
   const consecutiveFailures = useRef(0);
-
-  // ── Guard: track the current pair to discard stale WS messages ──
   const currentPairRef = useRef(pair);
   const currentTfRef = useRef(timeframe);
 
@@ -43,19 +37,10 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       const k = msg.k;
       if (!k) return null;
       return {
-        candle: {
-          open: +k.o,
-          high: +k.h,
-          low: +k.l,
-          close: +k.c,
-          volume: +k.v,
-          timestamp: k.t,
-        },
+        candle: { open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v, timestamp: k.t },
         isClosed: k.x,
       };
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }, []);
 
   const fetchInitialCandles = useCallback(async (abortSignal?: AbortSignal) => {
@@ -69,16 +54,9 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       if (!res.ok) return [];
       const data = await res.json();
       return (data as any[][]).map((k): CandleData => ({
-        open: +k[1],
-        high: +k[2],
-        low: +k[3],
-        close: +k[4],
-        volume: +k[5],
-        timestamp: k[0],
+        open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5], timestamp: k[0],
       }));
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }, [pair, timeframe]);
 
   const cleanup = useCallback(() => {
@@ -102,10 +80,8 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
     const url = urls[endpointIndex.current % urls.length];
     setStatus('connecting');
 
-    // Capture the pair/tf this connection is for
     const connPair = pair;
     const connTf = timeframe;
-
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -130,44 +106,25 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
     };
 
     ws.onmessage = (event) => {
-      // ── GUARD: discard messages if pair/tf changed ──
       if (currentPairRef.current !== connPair || currentTfRef.current !== connTf) {
         ws.close();
         return;
       }
-
       lastMessageTime.current = Date.now();
       const parsed = parseKline(event.data);
       if (!parsed) return;
 
       const { candle, isClosed } = parsed;
-
       setCandles((prev) => {
         const len = prev.length;
-
         if (isClosed) {
-          if (len >= CANDLE_BUFFER) {
-            const next = prev.slice(len - CANDLE_BUFFER + 1);
-            next.push(candle);
-            return next;
-          }
+          if (len >= CANDLE_BUFFER) { const next = prev.slice(len - CANDLE_BUFFER + 1); next.push(candle); return next; }
           return [...prev, candle];
         }
-
         if (len === 0) return [candle];
-
         const last = prev[len - 1];
-        if (last.timestamp === candle.timestamp) {
-          const next = prev.slice(0, -1);
-          next.push(candle);
-          return next;
-        }
-
-        if (len >= CANDLE_BUFFER) {
-          const next = prev.slice(len - CANDLE_BUFFER + 1);
-          next.push(candle);
-          return next;
-        }
+        if (last.timestamp === candle.timestamp) { const next = prev.slice(0, -1); next.push(candle); return next; }
+        if (len >= CANDLE_BUFFER) { const next = prev.slice(len - CANDLE_BUFFER + 1); next.push(candle); return next; }
         return [...prev, candle];
       });
     };
@@ -176,56 +133,42 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       clearTimeout(connectionTimeout);
       clearInterval(healthTimer.current);
       wsRef.current = null;
-
-      if (!shouldConnect.current) {
-        setStatus('disconnected');
-        return;
-      }
-
-      // Don't reconnect if pair changed
+      if (!shouldConnect.current) { setStatus('disconnected'); return; }
       if (currentPairRef.current !== connPair || currentTfRef.current !== connTf) return;
 
       consecutiveFailures.current++;
       setStatus('reconnecting');
+      if (consecutiveFailures.current % 2 === 0) endpointIndex.current++;
 
-      if (consecutiveFailures.current % 2 === 0) {
-        endpointIndex.current++;
-      }
-
-      const delay = Math.min(
-        reconnectDelay.current * (1 + Math.random() * 0.3),
-        MAX_RECONNECT_DELAY
-      );
-
+      const delay = Math.min(reconnectDelay.current * (1 + Math.random() * 0.3), MAX_RECONNECT_DELAY);
       reconnectTimer.current = setTimeout(() => {
         reconnectDelay.current = Math.min(reconnectDelay.current * 1.5, MAX_RECONNECT_DELAY);
         connect();
       }, delay);
     };
 
-    ws.onerror = () => {
-      clearTimeout(connectionTimeout);
-      ws.close();
-    };
+    ws.onerror = () => { clearTimeout(connectionTimeout); ws.close(); };
   }, [pair, timeframe, cleanup, parseKline]);
 
   useEffect(() => {
-    // ── Update refs FIRST ──
+    // ── DISABLED: return idle state ──
+    if (!enabled) {
+      cleanup();
+      setCandles([]);
+      setStatus('disconnected');
+      return;
+    }
+
     currentPairRef.current = pair;
     currentTfRef.current = timeframe;
-
-    // ── RESET candles immediately to prevent stale data in chart ──
     setCandles([]);
-
     shouldConnect.current = true;
     endpointIndex.current = 0;
     consecutiveFailures.current = 0;
     reconnectDelay.current = INITIAL_RECONNECT_DELAY;
 
     const abortController = new AbortController();
-
     fetchInitialCandles(abortController.signal).then((initial) => {
-      // Guard: only set if still the same pair
       if (currentPairRef.current === pair && currentTfRef.current === timeframe) {
         if (initial.length > 0) setCandles(initial);
         connect();
@@ -237,7 +180,7 @@ export function useBinanceWebSocket(pair: string, timeframe: Timeframe) {
       abortController.abort();
       cleanup();
     };
-  }, [pair, timeframe, connect, fetchInitialCandles, cleanup]);
+  }, [pair, timeframe, enabled, connect, fetchInitialCandles, cleanup]);
 
-  return { candles, status };
+  return { candles: enabled ? candles : EMPTY, status: enabled ? status : ('disconnected' as WsStatus) };
 }
