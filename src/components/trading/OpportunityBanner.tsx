@@ -104,7 +104,7 @@ const OpportunityItem = ({
   );
 };
 
-const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, pinnedOpportunity, onDismissPinned }: OpportunityBannerProps) => {
+const OpportunityBanner = ({ opportunities, scanning, onSwitchAsset, onDismiss, pinnedOpportunity, onDismissPinned, timeframe }: OpportunityBannerProps) => {
   const lastSoundRef = useRef<string>('');
 
   useEffect(() => {
