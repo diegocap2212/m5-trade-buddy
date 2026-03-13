@@ -183,7 +183,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
       time: toChartTime(candles[candles.length - ema9Values.length + i].timestamp),
       value: v,
     }));
-    ema9Ref.current?.setData(ema9Data);
+    ema9Ref.current?.setData(dedupeLineData(ema9Data));
 
     // EMA 21
     if (candles.length >= 21) {
@@ -192,7 +192,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
         time: toChartTime(candles[candles.length - ema21Values.length + i].timestamp),
         value: v,
       }));
-      ema21Ref.current?.setData(ema21Data);
+      ema21Ref.current?.setData(dedupeLineData(ema21Data));
     }
 
     // Bollinger Bands
@@ -209,9 +209,9 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [] }: Candle
         bbMiddle.push({ time, value: bb.middle });
         bbLower.push({ time, value: bb.lower });
       }
-      bbUpperRef.current?.setData(bbUpper);
-      bbMiddleRef.current?.setData(bbMiddle);
-      bbLowerRef.current?.setData(bbLower);
+      bbUpperRef.current?.setData(dedupeLineData(bbUpper));
+      bbMiddleRef.current?.setData(dedupeLineData(bbMiddle));
+      bbLowerRef.current?.setData(dedupeLineData(bbLower));
     }
 
     // VWAP
