@@ -1,5 +1,5 @@
-import { TrendingUp, Shield, ShieldAlert, TrendingDown, Target } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { TrendingUp, Shield, ShieldAlert, TrendingDown, Target, DollarSign } from 'lucide-react';
+import { CRYPTO_ASSETS } from '@/lib/trading-types';
 
 interface SessionStatsProps {
   wins: number;
@@ -12,9 +12,12 @@ interface SessionStatsProps {
     lossesMG1: number;
     lossesDirect: number;
   };
+  operating?: boolean;
+  capital?: number;
+  selectedAsset?: string;
 }
 
-const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: SessionStatsProps) => {
+const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats, operating, capital = 0, selectedAsset }: SessionStatsProps) => {
   const wd = mg1Stats?.winsDirect ?? wins;
   const wm = mg1Stats?.winsMG1 ?? 0;
   const lm = mg1Stats?.lossesMG1 ?? losses;
@@ -23,6 +26,21 @@ const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: Session
 
   const wrColor = winRate >= 70 ? 'text-win' : winRate >= 55 ? 'text-pending' : 'text-loss';
   const wrBarColor = winRate >= 70 ? 'bg-win' : winRate >= 55 ? 'bg-pending' : 'bg-loss';
+
+  // P&L calculation when operating
+  const asset = CRYPTO_ASSETS.find(a => a.pair === selectedAsset);
+  const payout = asset?.payout ?? 85;
+  const baseEntry = capital * 0.02;
+  const mgEntry = (baseEntry + baseEntry * (payout / 100)) / (payout / 100);
+  
+  // P&L: direct wins earn baseEntry * payout%, MG1 wins earn mgEntry * payout% - baseEntry (net after recovering loss)
+  // direct losses lose baseEntry, MG1 losses lose baseEntry + mgEntry
+  const pnl = operating ? (
+    wd * (baseEntry * payout / 100) +
+    wm * (mgEntry * payout / 100 - baseEntry) -
+    lm * (baseEntry + mgEntry) -
+    ld * baseEntry
+  ) : 0;
 
   return (
     <div className="space-y-3">
@@ -41,6 +59,19 @@ const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats }: Session
         <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
           <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${wrBarColor}`} style={{ width: `${Math.min(winRate, 100)}%` }} />
         </div>
+
+        {/* P&L when operating */}
+        {operating && capital > 0 && (
+          <div className={`flex items-center justify-between mt-2 pt-2 border-t border-border`}>
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-mono text-[10px] text-muted-foreground tracking-wider">P&L SESSÃO</span>
+            </div>
+            <span className={`font-mono text-sm font-bold ${pnl >= 0 ? 'text-win' : 'text-loss'}`}>
+              {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Detail Grid */}
