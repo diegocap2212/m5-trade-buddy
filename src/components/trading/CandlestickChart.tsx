@@ -328,12 +328,41 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     }
   }, [candles, currentSignal?.id, signalHistory.length, autoScroll]);
 
+  const handleToggleScroll = useCallback(() => {
+    setAutoScroll(prev => {
+      if (!prev) chartRef.current?.timeScale().scrollToRealTime();
+      return !prev;
+    });
+  }, []);
+
   const activeSignal = currentSignal && currentSignal.direction !== 'WAIT' ? currentSignal : null;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-        <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs font-semibold text-foreground tracking-wider">GRÁFICO</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleToggleScroll}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-mono transition-all ${
+                    autoScroll
+                      ? 'bg-primary/10 text-primary border border-primary/30'
+                      : 'bg-muted/50 text-muted-foreground border border-border hover:bg-muted'
+                  }`}
+                >
+                  {autoScroll ? <Lock size={12} /> : <Unlock size={12} />}
+                  {!autoScroll && <span className="tracking-wider">LIVRE</span>}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="text-xs">{autoScroll ? 'Gráfico travado no tempo real — clique para navegar livremente' : 'Navegação livre — clique para voltar ao tempo real'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: '#ffd600' }} /> EMA9
