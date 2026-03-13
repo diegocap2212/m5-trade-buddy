@@ -384,7 +384,7 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
     if (autoScroll) {
       chartRef.current?.timeScale().scrollToRealTime();
     }
-  }, [candles, currentSignal?.id, signalHistory.length, autoScroll]);
+  }, [candles, currentSignal?.id, currentSignal?.result, signalHistory, autoScroll]);
 
   const handleToggleScroll = useCallback(() => {
     setAutoScroll(prev => {
