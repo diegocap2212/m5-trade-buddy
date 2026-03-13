@@ -1,5 +1,6 @@
 export type SignalDirection = 'CALL' | 'PUT' | 'WAIT';
 export type SignalResult = 'WIN' | 'LOSS' | 'PENDING';
+export type ResultDetail = 'WIN_DIRECT' | 'WIN_MG1' | 'LOSS_MG1' | 'LOSS_DIRECT';
 export type MacroBias = 'BULL' | 'BEAR' | 'NEUTRAL';
 export type Timeframe = 'M1' | 'M5';
 
