@@ -103,6 +103,14 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   const dir = signal.direction === 'CALL' ? 'call' : 'put';
 
   if (isActive) {
+    // Show current phase in active marker
+    const rd = signal.resultDetail;
+    if (rd === 'LOSS_DIRECT') {
+      return { ...MARKER_CONFIG.ACTIVE[dir], text: `🔄 MG1 ${signal.direction}` };
+    }
+    if (rd === 'LOSS_MG1') {
+      return { ...MARKER_CONFIG.ACTIVE[dir], text: `🔥 MG2 ${signal.direction}` };
+    }
     const cfg = MARKER_CONFIG.ACTIVE[dir];
     return { ...cfg, text: `▶ ${signal.direction} ${signal.confidence}%` };
   }
@@ -113,7 +121,7 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   }
 
   if (signal.result === 'WIN') return MARKER_CONFIG.WIN_DIRECT[dir];
-  if (signal.result === 'LOSS') return MARKER_CONFIG.LOSS_DIRECT[dir];
+  if (signal.result === 'LOSS') return MARKER_CONFIG.LOSS_MG2[dir];
   return MARKER_CONFIG.PENDING[dir];
 }
 
