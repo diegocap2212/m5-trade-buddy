@@ -525,6 +525,17 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
               <span className="font-bold tracking-widest text-sm">{activeSignal.direction}</span>
               <span className="text-[10px] text-muted-foreground">{activeSignal.pattern}</span>
             </div>
+            {/* MG Phase indicator */}
+            {activeSignal.resultDetail === 'LOSS_DIRECT' && (
+              <span className="px-2 py-0.5 rounded-full bg-pending/20 border border-pending/40 text-pending font-bold text-[10px] animate-pulse">
+                🔄 MG1
+              </span>
+            )}
+            {activeSignal.resultDetail === 'LOSS_MG1' && (
+              <span className="px-2 py-0.5 rounded-full bg-[#ff6d00]/20 border border-[#ff6d00]/40 text-[#ff6d00] font-bold text-[10px] animate-pulse">
+                🔥 MG2
+              </span>
+            )}
             <div className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full bg-background/50 border border-border">
               <span className="text-[10px] text-muted-foreground">Confiança</span>
               <span className="font-bold">{activeSignal.confidence}%</span>
