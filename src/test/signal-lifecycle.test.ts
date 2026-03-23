@@ -9,11 +9,9 @@ function makeCandle(timestamp: number, close: number, open?: number): CandleData
 
 describe('Signal lifecycle', () => {
   it('every backtest signal has a resolvedTimestamp', () => {
-    // Create enough candles for backtest (need at least 23)
     const candles: CandleData[] = [];
-    const baseTime = Date.now() - 30 * 60_000;
+    const baseTime = Date.now() - 60 * 60_000;
     for (let i = 0; i < 50; i++) {
-      // Create some price variation
       const price = 100 + Math.sin(i * 0.5) * 5;
       candles.push(makeCandle(baseTime + i * 60_000, price, price - 0.5));
     }
@@ -29,10 +27,10 @@ describe('Signal lifecycle', () => {
     }
   });
 
-  it('resolvedTimestamp matches expected candle for WIN_DIRECT vs MG1', () => {
+  it('resolvedTimestamp matches expected candle for WIN_DIRECT vs MG1 vs MG2', () => {
     const candles: CandleData[] = [];
-    const baseTime = Date.now() - 60 * 60_000;
-    for (let i = 0; i < 60; i++) {
+    const baseTime = Date.now() - 70 * 60_000;
+    for (let i = 0; i < 70; i++) {
       const price = 100 + Math.sin(i * 0.3) * 8;
       candles.push(makeCandle(baseTime + i * 60_000, price, price - 1));
     }
@@ -46,23 +44,23 @@ describe('Signal lifecycle', () => {
       const resolvedTime = signal.resolvedTimestamp!.getTime();
       if (signal.resultDetail === 'WIN_DIRECT') {
         expect(resolvedTime).toBe(candles[entryIdx + 1].timestamp);
-      } else {
-        // WIN_MG1 or LOSS_MG1 — resolved at i+2
+      } else if (signal.resultDetail === 'WIN_MG1') {
         expect(resolvedTime).toBe(candles[entryIdx + 2].timestamp);
+      } else {
+        // WIN_MG2 or LOSS_MG2 — resolved at i+3
+        expect(resolvedTime).toBe(candles[entryIdx + 3].timestamp);
       }
     }
   });
 
   it('signalHistory slice(0,10) returns newest signals', () => {
-    // Simulate history stored newest-first
     const history = Array.from({ length: 20 }, (_, i) => ({
       id: `sig-${i}`,
       timestamp: new Date(Date.now() - i * 60_000),
     }));
 
     const recent = history.slice(0, 10);
-    expect(recent[0].id).toBe('sig-0'); // newest
+    expect(recent[0].id).toBe('sig-0');
     expect(recent[9].id).toBe('sig-9');
-    // Old slice(-10) would have returned sig-10..sig-19
   });
 });
