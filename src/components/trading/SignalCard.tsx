@@ -2,7 +2,7 @@ import { ArrowUpCircle, ArrowDownCircle, Clock, TrendingUp, TrendingDown, Minus 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import type { SignalDirection, MacroBias } from '@/lib/trading-types';
+import type { SignalDirection, MacroBias, ResultDetail } from '@/lib/trading-types';
 
 interface SignalCardProps {
   direction: SignalDirection;
@@ -16,6 +16,7 @@ interface SignalCardProps {
   stochK?: number;
   stochD?: number;
   confluences?: string[];
+  currentPhase?: ResultDetail;
 }
 
 const signalConfig = {
@@ -66,15 +67,26 @@ const SignalCard = ({
   stochK = 50,
   stochD = 50,
   confluences = [],
+  currentPhase,
 }: SignalCardProps) => {
   const config = signalConfig[direction];
   const Icon = config.icon;
   const bias = biasConfig[ema200Bias];
   const BiasIcon = bias.icon;
 
+  const phaseLabel = currentPhase === 'LOSS_DIRECT' ? '🔄 FASE MG1'
+    : currentPhase === 'LOSS_MG1' ? '🔥 FASE MG2'
+    : null;
+
   return (
     <Card className={`${config.bgClass} ${config.borderClass} ${config.glowClass} border-2 transition-all duration-500`}>
       <CardContent className="p-6 flex flex-col items-center gap-4">
+        {/* MG Phase Banner */}
+        {phaseLabel && (
+          <div className="w-full text-center py-2 rounded-lg bg-pending/20 border border-pending/40 animate-pulse">
+            <span className="font-mono text-sm font-bold text-pending">{phaseLabel}</span>
+          </div>
+        )}
         {/* Macro Bias Badge */}
         <div className="w-full flex items-center justify-between">
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${bias.bg}`}>

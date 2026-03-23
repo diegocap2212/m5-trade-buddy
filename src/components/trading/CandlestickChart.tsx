@@ -78,16 +78,16 @@ const MARKER_CONFIG = {
     put:  { shape: 'arrowDown' as const, color: '#ff6d00', text: '🔥 MG2 WIN' },
   },
   LOSS_MG1: {
-    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ MG1→MG2' },
-    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ MG1→MG2' },
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ →MG2' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ →MG2' },
   },
   LOSS_MG2: {
-    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 MG2 LOSS' },
-    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 MG2 LOSS' },
+    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 LOSS MG2' },
+    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 LOSS MG2' },
   },
   LOSS_DIRECT: {
-    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '✗ LOSS' },
-    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '✗ LOSS' },
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ →MG1' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ →MG1' },
   },
   PENDING: {
     call: { shape: 'arrowUp' as const, color: '#ffd600', text: '⏳ ENTRY' },
@@ -103,6 +103,14 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   const dir = signal.direction === 'CALL' ? 'call' : 'put';
 
   if (isActive) {
+    // Show current phase in active marker
+    const rd = signal.resultDetail;
+    if (rd === 'LOSS_DIRECT') {
+      return { ...MARKER_CONFIG.ACTIVE[dir], text: `🔄 MG1 ${signal.direction}` };
+    }
+    if (rd === 'LOSS_MG1') {
+      return { ...MARKER_CONFIG.ACTIVE[dir], text: `🔥 MG2 ${signal.direction}` };
+    }
     const cfg = MARKER_CONFIG.ACTIVE[dir];
     return { ...cfg, text: `▶ ${signal.direction} ${signal.confidence}%` };
   }
@@ -113,7 +121,7 @@ function getMarkerStyle(signal: TradingSignal, isActive: boolean) {
   }
 
   if (signal.result === 'WIN') return MARKER_CONFIG.WIN_DIRECT[dir];
-  if (signal.result === 'LOSS') return MARKER_CONFIG.LOSS_DIRECT[dir];
+  if (signal.result === 'LOSS') return MARKER_CONFIG.LOSS_MG2[dir];
   return MARKER_CONFIG.PENDING[dir];
 }
 
@@ -517,6 +525,17 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
               <span className="font-bold tracking-widest text-sm">{activeSignal.direction}</span>
               <span className="text-[10px] text-muted-foreground">{activeSignal.pattern}</span>
             </div>
+            {/* MG Phase indicator */}
+            {activeSignal.resultDetail === 'LOSS_DIRECT' && (
+              <span className="px-2 py-0.5 rounded-full bg-pending/20 border border-pending/40 text-pending font-bold text-[10px] animate-pulse">
+                🔄 MG1
+              </span>
+            )}
+            {activeSignal.resultDetail === 'LOSS_MG1' && (
+              <span className="px-2 py-0.5 rounded-full bg-[#ff6d00]/20 border border-[#ff6d00]/40 text-[#ff6d00] font-bold text-[10px] animate-pulse">
+                🔥 MG2
+              </span>
+            )}
             <div className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full bg-background/50 border border-border">
               <span className="text-[10px] text-muted-foreground">Confiança</span>
               <span className="font-bold">{activeSignal.confidence}%</span>
