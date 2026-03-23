@@ -185,7 +185,7 @@ const Index = () => {
         <GlobalAssertiveness refreshTrigger={signalHistory.length} />
 
         <p className="text-center font-mono text-[10px] text-muted-foreground/50 py-1">
-          Crypto: Binance em tempo real • Forex: Twelve Data API (requer key) ou simulado
+          Dados em tempo real via Binance WebSocket
         </p>
       </div>
     </div>
