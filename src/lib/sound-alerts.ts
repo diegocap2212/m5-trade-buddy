@@ -28,18 +28,16 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
 
 /** Rising two-tone alert for new CALL signal */
 export function playCallAlert() {
-  
-  playTone(523, 0.15, 'sine', 0.18); // C5
-  setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120); // E5
-  setTimeout(() => playTone(784, 0.3, 'sine', 0.15), 240); // G5
+  playTone(523, 0.15, 'sine', 0.18);
+  setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120);
+  setTimeout(() => playTone(784, 0.3, 'sine', 0.15), 240);
 }
 
 /** Falling two-tone alert for new PUT signal */
 export function playPutAlert() {
-  
-  playTone(784, 0.15, 'sine', 0.18); // G5
-  setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120); // E5
-  setTimeout(() => playTone(523, 0.3, 'sine', 0.15), 240); // C5
+  playTone(784, 0.15, 'sine', 0.18);
+  setTimeout(() => playTone(659, 0.2, 'sine', 0.18), 120);
+  setTimeout(() => playTone(523, 0.3, 'sine', 0.15), 240);
 }
 
 /** Cheerful success chime for WIN */
@@ -60,4 +58,11 @@ export function playLossSound() {
 export function playMG1Alert() {
   playTone(440, 0.08, 'square', 0.06);
   setTimeout(() => playTone(440, 0.08, 'square', 0.06), 150);
+}
+
+/** Urgent double-tick for MG2 activation */
+export function playMG2Alert() {
+  playTone(660, 0.08, 'square', 0.08);
+  setTimeout(() => playTone(660, 0.08, 'square', 0.08), 120);
+  setTimeout(() => playTone(880, 0.12, 'square', 0.1), 240);
 }
