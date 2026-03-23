@@ -67,11 +67,16 @@ const SignalCard = ({
   stochK = 50,
   stochD = 50,
   confluences = [],
+  currentPhase,
 }: SignalCardProps) => {
   const config = signalConfig[direction];
   const Icon = config.icon;
   const bias = biasConfig[ema200Bias];
   const BiasIcon = bias.icon;
+
+  const phaseLabel = currentPhase === 'LOSS_DIRECT' ? '🔄 FASE MG1'
+    : currentPhase === 'LOSS_MG1' ? '🔥 FASE MG2'
+    : null;
 
   return (
     <Card className={`${config.bgClass} ${config.borderClass} ${config.glowClass} border-2 transition-all duration-500`}>
