@@ -2,7 +2,7 @@ import { ArrowUpCircle, ArrowDownCircle, Clock, TrendingUp, TrendingDown, Minus 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import type { SignalDirection, MacroBias } from '@/lib/trading-types';
+import type { SignalDirection, MacroBias, ResultDetail } from '@/lib/trading-types';
 
 interface SignalCardProps {
   direction: SignalDirection;
@@ -16,6 +16,7 @@ interface SignalCardProps {
   stochK?: number;
   stochD?: number;
   confluences?: string[];
+  currentPhase?: ResultDetail;
 }
 
 const signalConfig = {
