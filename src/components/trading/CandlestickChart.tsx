@@ -78,16 +78,16 @@ const MARKER_CONFIG = {
     put:  { shape: 'arrowDown' as const, color: '#ff6d00', text: '🔥 MG2 WIN' },
   },
   LOSS_MG1: {
-    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ MG1→MG2' },
-    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ MG1→MG2' },
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ →MG2' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ →MG2' },
   },
   LOSS_MG2: {
-    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 MG2 LOSS' },
-    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 MG2 LOSS' },
+    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 LOSS MG2' },
+    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 LOSS MG2' },
   },
   LOSS_DIRECT: {
-    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '✗ LOSS' },
-    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '✗ LOSS' },
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ →MG1' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ →MG1' },
   },
   PENDING: {
     call: { shape: 'arrowUp' as const, color: '#ffd600', text: '⏳ ENTRY' },
