@@ -94,19 +94,21 @@ const SignalHistory = ({ signals, sessionWinRate, totalSignals, wins, losses, se
               const DisplayIcon = display.config.icon;
 
               return (
-                <div key={signal.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-secondary/30 transition-colors">
-                  <div className="flex items-center gap-2.5">
-                    <Badge variant="outline" className={`${directionBadge[signal.direction]} font-mono text-[10px] border px-1.5 py-0`}>
-                      {signal.direction}
-                    </Badge>
-                    <span className="font-mono text-[10px] text-muted-foreground">{signal.asset}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground opacity-60">{signal.confidence}%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-muted-foreground">
+                <div key={signal.id} className="flex flex-col gap-1 px-3 py-2 hover:bg-secondary/30 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className={`${directionBadge[signal.direction]} font-mono text-[10px] border px-1.5 py-0 shrink-0`}>
+                        {signal.direction}
+                      </Badge>
+                      <span className="font-mono text-[10px] text-muted-foreground truncate">{signal.asset}</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">
                       {signal.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <Badge variant="outline" className={`${display.config.className} font-mono text-[10px] border px-1.5 py-0 flex items-center gap-1`}>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] text-muted-foreground/60">{signal.confidence}%</span>
+                    <Badge variant="outline" className={`${display.config.className} font-mono text-[9px] border px-1.5 py-0 flex items-center gap-1 shrink-0`}>
                       <DisplayIcon className={`h-2.5 w-2.5 ${display.type === 'phase' && display.config === phaseConfig.PENDING_ENTRY ? 'animate-spin' : ''}`} />
                       {display.config.label}
                     </Badge>
