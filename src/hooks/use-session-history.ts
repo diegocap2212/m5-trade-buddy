@@ -7,7 +7,7 @@ export interface SessionData {
   stats: MG1Stats;
 }
 
-const emptyStats: MG1Stats = { winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 };
+const emptyStats: MG1Stats = { winsDirect: 0, winsMG1: 0, winsMG2: 0, lossesMG1: 0, lossesMG2: 0, lossesDirect: 0 };
 
 function makeKey(asset: string, timeframe: Timeframe) {
   return `${asset}_${timeframe}`;

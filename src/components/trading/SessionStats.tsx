@@ -1,4 +1,4 @@
-import { TrendingUp, Shield, ShieldAlert, TrendingDown, Target, DollarSign } from 'lucide-react';
+import { TrendingUp, Shield, ShieldAlert, TrendingDown, Target, DollarSign, Flame } from 'lucide-react';
 import { CRYPTO_ASSETS } from '@/lib/trading-types';
 
 interface SessionStatsProps {
@@ -9,7 +9,9 @@ interface SessionStatsProps {
   mg1Stats?: {
     winsDirect: number;
     winsMG1: number;
+    winsMG2: number;
     lossesMG1: number;
+    lossesMG2: number;
     lossesDirect: number;
   };
   operating?: boolean;
@@ -19,10 +21,12 @@ interface SessionStatsProps {
 
 const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats, operating, capital = 0, selectedAsset }: SessionStatsProps) => {
   const wd = mg1Stats?.winsDirect ?? wins;
-  const wm = mg1Stats?.winsMG1 ?? 0;
-  const lm = mg1Stats?.lossesMG1 ?? losses;
+  const wm1 = mg1Stats?.winsMG1 ?? 0;
+  const wm2 = mg1Stats?.winsMG2 ?? 0;
+  const lm1 = mg1Stats?.lossesMG1 ?? 0;
+  const lm2 = mg1Stats?.lossesMG2 ?? losses;
   const ld = mg1Stats?.lossesDirect ?? 0;
-  const total = wd + wm + lm + ld;
+  const total = wd + wm1 + wm2 + lm1 + lm2 + ld;
 
   const wrColor = winRate >= 70 ? 'text-win' : winRate >= 55 ? 'text-pending' : 'text-loss';
   const wrBarColor = winRate >= 70 ? 'bg-win' : winRate >= 55 ? 'bg-pending' : 'bg-loss';
@@ -31,14 +35,15 @@ const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats, operating
   const asset = CRYPTO_ASSETS.find(a => a.pair === selectedAsset);
   const payout = asset?.payout ?? 85;
   const baseEntry = capital * 0.02;
-  const mgEntry = (baseEntry + baseEntry * (payout / 100)) / (payout / 100);
+  const mg1Entry = (baseEntry + baseEntry * (payout / 100)) / (payout / 100);
+  const mg2Entry = (baseEntry + mg1Entry + (baseEntry + mg1Entry) * (payout / 100)) / (payout / 100);
   
-  // P&L: direct wins earn baseEntry * payout%, MG1 wins earn mgEntry * payout% - baseEntry (net after recovering loss)
-  // direct losses lose baseEntry, MG1 losses lose baseEntry + mgEntry
   const pnl = operating ? (
     wd * (baseEntry * payout / 100) +
-    wm * (mgEntry * payout / 100 - baseEntry) -
-    lm * (baseEntry + mgEntry) -
+    wm1 * (mg1Entry * payout / 100 - baseEntry) +
+    wm2 * (mg2Entry * payout / 100 - baseEntry - mg1Entry) -
+    lm2 * (baseEntry + mg1Entry + mg2Entry) -
+    lm1 * (baseEntry + mg1Entry) -
     ld * baseEntry
   ) : 0;
 
@@ -74,11 +79,13 @@ const SessionStats = ({ wins, losses, totalSignals, winRate, mg1Stats, operating
         )}
       </div>
 
-      {/* Detail Grid */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Detail Grid — 3x2 for MG2 */}
+      <div className="grid grid-cols-3 gap-2">
         <StatCard icon={TrendingUp} label="Win Direto" value={wd} colorClass="text-win" bgClass="bg-win/10" />
-        <StatCard icon={Shield} label="Win MG1" value={wm} colorClass="text-pending" bgClass="bg-pending/10" />
-        <StatCard icon={ShieldAlert} label="Loss MG1" value={lm} colorClass="text-loss" bgClass="bg-loss/10" />
+        <StatCard icon={Shield} label="Win MG1" value={wm1} colorClass="text-pending" bgClass="bg-pending/10" />
+        <StatCard icon={Flame} label="Win MG2" value={wm2} colorClass="text-[#ff6d00]" bgClass="bg-[#ff6d00]/10" />
+        <StatCard icon={ShieldAlert} label="Loss MG1" value={lm1} colorClass="text-muted-foreground" bgClass="bg-muted/30" />
+        <StatCard icon={ShieldAlert} label="Loss MG2" value={lm2} colorClass="text-loss" bgClass="bg-loss/10" />
         <StatCard icon={TrendingDown} label="Loss Direto" value={ld} colorClass="text-muted-foreground" bgClass="bg-muted/30" />
       </div>
     </div>
@@ -93,11 +100,11 @@ function StatCard({ icon: Icon, label, value, colorClass, bgClass }: {
   bgClass: string;
 }) {
   return (
-    <div className={`rounded-lg border border-border p-3 ${bgClass} flex items-center gap-3`}>
-      <Icon className={`h-4 w-4 ${colorClass} shrink-0`} />
+    <div className={`rounded-lg border border-border p-2.5 ${bgClass} flex items-center gap-2`}>
+      <Icon className={`h-3.5 w-3.5 ${colorClass} shrink-0`} />
       <div className="min-w-0">
-        <span className={`font-mono text-lg font-bold ${colorClass} block leading-tight`}>{value}</span>
-        <span className="font-mono text-[10px] text-muted-foreground block truncate">{label}</span>
+        <span className={`font-mono text-base font-bold ${colorClass} block leading-tight`}>{value}</span>
+        <span className="font-mono text-[9px] text-muted-foreground block truncate">{label}</span>
       </div>
     </div>
   );

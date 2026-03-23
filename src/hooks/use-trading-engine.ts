@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useMarketData } from './use-market-data';
-import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert } from '@/lib/sound-alerts';
+import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert, playMG2Alert } from '@/lib/sound-alerts';
 import { useSessionHistory } from './use-session-history';
 import { recordResult, recordBacktestResults } from '@/lib/global-stats';
 import type { ScannerOpportunity } from './use-multi-scanner';
@@ -10,7 +10,9 @@ import type { ScannerOpportunity } from './use-multi-scanner';
 export interface MG1Stats {
   winsDirect: number;
   winsMG1: number;
+  winsMG2: number;
   lossesMG1: number;
+  lossesMG2: number;
   lossesDirect: number;
 }
 
@@ -18,8 +20,9 @@ interface PendingValidation {
   signal: TradingSignal;
   entryPrice: number;
   entryCandleTimestamp: number;
-  state: 'waiting_first' | 'waiting_mg1';
+  state: 'waiting_first' | 'waiting_mg1' | 'waiting_mg2';
   firstCandleClose?: number;
+  mg1CandleClose?: number;
 }
 
 /**
@@ -31,7 +34,6 @@ function getClosedCandles(candles: CandleData[], timeframe: Timeframe): CandleDa
   const now = Date.now();
   const currentCandleTs = Math.floor(now / intervalMs) * intervalMs;
   const last = candles[candles.length - 1];
-  // If the last candle's timestamp matches the current forming candle, exclude it
   if (last.timestamp >= currentCandleTs) {
     return candles.slice(0, -1);
   }
@@ -41,7 +43,7 @@ function getClosedCandles(candles: CandleData[], timeframe: Timeframe): CandleDa
 export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const [currentSignal, setCurrentSignal] = useState<TradingSignal | null>(null);
   const [signalHistory, setSignalHistory] = useState<TradingSignal[]>([]);
-  const [mg1Stats, setMG1Stats] = useState<MG1Stats>({ winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 });
+  const [mg1Stats, setMG1Stats] = useState<MG1Stats>({ winsDirect: 0, winsMG1: 0, winsMG2: 0, lossesMG1: 0, lossesMG2: 0, lossesDirect: 0 });
 
   const lockedCandleTimestamp = useRef<number | null>(null);
   const pendingValidation = useRef<PendingValidation | null>(null);
@@ -84,10 +86,8 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
   /**
    * Commit an external opportunity as a PENDING signal.
-   * Called when user clicks "ABRIR" on the scanner banner.
    */
   const commitOpportunity = useCallback((opp: ScannerOpportunity) => {
-    // Don't commit if we already have a pending validation
     if (pendingValidation.current) return;
 
     const signalId = crypto.randomUUID();
@@ -115,7 +115,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     if (signal.direction === 'CALL') playCallAlert();
     else if (signal.direction === 'PUT') playPutAlert();
 
-    // Use closeTimestamp as entry candle reference for validation
     lockedCandleTimestamp.current = opp.closeTimestamp;
     pendingValidation.current = {
       signal,
@@ -183,7 +182,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     };
 
     setCurrentSignal(signal);
-    // Immediately add PENDING signal to history so it's visible
     setSignalHistory(prev => [signal, ...prev].slice(0, 50));
     
     if (signal.direction === 'CALL') playCallAlert();
@@ -196,16 +194,14 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     };
   }, [candles, selectedAsset, timeframe]);
 
-  // Validate signal results using CLOSED candles
+  // Validate signal results using CLOSED candles — 3-phase: DIRECT → MG1 → MG2
   useEffect(() => {
     const pv = pendingValidation.current;
     if (!pv || candles.length < 2) return;
 
-    // Use closed candles for validation
     const closedCandles = getClosedCandles(candles, timeframe);
 
     if (pv.state === 'waiting_first') {
-      // Find first closed candle after entry
       const validationCandle = closedCandles.find(c => c.timestamp > pv.entryCandleTimestamp);
       if (!validationCandle) return;
 
@@ -228,13 +224,11 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         // LOSS on first candle → go to MG1
         pv.state = 'waiting_mg1';
         pv.firstCandleClose = closePrice;
-        // Update signal to show it's in MG1 phase
         updateSignalById(pv.signal.id, { result: 'PENDING' as const, resultDetail: 'LOSS_DIRECT' as ResultDetail });
         playMG1Alert();
         console.log(`[Engine] ⚠️ LOSS_DIRECT → MG1 for ${pv.signal.asset} ${pv.signal.direction} | entry=${pv.entryPrice} close=${closePrice}`);
       }
     } else if (pv.state === 'waiting_mg1') {
-      // Find two closed candles after entry
       const candlesAfterEntry = closedCandles.filter(c => c.timestamp > pv.entryCandleTimestamp);
       if (candlesAfterEntry.length < 2) return;
 
@@ -253,13 +247,40 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         playWinSound();
         console.log(`[Engine] ⚡ WIN_MG1 for ${pv.signal.asset} ${pv.signal.direction} | mg1Entry=${mg1EntryPrice} close=${mg1Candle.close}`);
       } else {
-        const updates = { result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail, resolvedTimestamp: new Date(mg1Candle.timestamp) };
+        // LOSS on MG1 → go to MG2
+        pv.state = 'waiting_mg2';
+        pv.mg1CandleClose = mg1Candle.close;
+        updateSignalById(pv.signal.id, { result: 'PENDING' as const, resultDetail: 'LOSS_MG1' as ResultDetail });
+        playMG2Alert();
+        console.log(`[Engine] ⚠️ LOSS_MG1 → MG2 for ${pv.signal.asset} ${pv.signal.direction} | mg1Entry=${mg1EntryPrice} close=${mg1Candle.close}`);
+      }
+      if (pv.state !== 'waiting_mg2') pendingValidation.current = null;
+    } else if (pv.state === 'waiting_mg2') {
+      const candlesAfterEntry = closedCandles.filter(c => c.timestamp > pv.entryCandleTimestamp);
+      if (candlesAfterEntry.length < 3) return;
+
+      const mg2Candle = candlesAfterEntry[2];
+      const mg2EntryPrice = pv.mg1CandleClose ?? pv.firstCandleClose ?? pv.entryPrice;
+      const isWinMG2 = pv.signal.direction === 'CALL'
+        ? mg2Candle.close > mg2EntryPrice
+        : mg2Candle.close < mg2EntryPrice;
+
+      if (isWinMG2) {
+        const updates = { result: 'WIN' as const, resultDetail: 'WIN_MG2' as ResultDetail, resolvedTimestamp: new Date(mg2Candle.timestamp) };
         updateSignalById(pv.signal.id, updates);
         setCurrentSignal(prev => prev?.id === pv.signal.id ? null : prev);
-        setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
-        recordResult('LOSS_MG1', selectedAsset, timeframe);
+        setMG1Stats(prev => ({ ...prev, winsMG2: prev.winsMG2 + 1 }));
+        recordResult('WIN_MG2', selectedAsset, timeframe);
+        playWinSound();
+        console.log(`[Engine] 🔥 WIN_MG2 for ${pv.signal.asset} ${pv.signal.direction} | mg2Entry=${mg2EntryPrice} close=${mg2Candle.close}`);
+      } else {
+        const updates = { result: 'LOSS' as const, resultDetail: 'LOSS_MG2' as ResultDetail, resolvedTimestamp: new Date(mg2Candle.timestamp) };
+        updateSignalById(pv.signal.id, updates);
+        setCurrentSignal(prev => prev?.id === pv.signal.id ? null : prev);
+        setMG1Stats(prev => ({ ...prev, lossesMG2: prev.lossesMG2 + 1 }));
+        recordResult('LOSS_MG2', selectedAsset, timeframe);
         playLossSound();
-        console.log(`[Engine] 💀 LOSS_MG1 for ${pv.signal.asset} ${pv.signal.direction} | mg1Entry=${mg1EntryPrice} close=${mg1Candle.close}`);
+        console.log(`[Engine] 💀 LOSS_MG2 for ${pv.signal.asset} ${pv.signal.direction} | mg2Entry=${mg2EntryPrice} close=${mg2Candle.close}`);
       }
       pendingValidation.current = null;
     }
@@ -267,7 +288,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
   // Backtest
   useEffect(() => {
-    if (candles.length >= 23 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
+    if (candles.length >= 24 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
       backtestRan.current = true;
       backtestAssetRef.current = selectedAsset;
       const result = backtestCandles(candles, selectedAsset);
@@ -281,7 +302,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         setMG1Stats(prev => ({
           winsDirect: prev.winsDirect + result.stats.winsDirect,
           winsMG1: prev.winsMG1 + result.stats.winsMG1,
+          winsMG2: prev.winsMG2 + result.stats.winsMG2,
           lossesMG1: prev.lossesMG1 + result.stats.lossesMG1,
+          lossesMG2: prev.lossesMG2 + result.stats.lossesMG2,
           lossesDirect: prev.lossesDirect + result.stats.lossesDirect,
         }));
         recordBacktestResults(result.signals, timeframe);
@@ -289,9 +312,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     }
   }, [candles, selectedAsset]);
 
-  const totalDecided = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.lossesMG1 + mg1Stats.lossesDirect;
-  const wins = mg1Stats.winsDirect + mg1Stats.winsMG1;
-  const losses = mg1Stats.lossesMG1 + mg1Stats.lossesDirect;
+  const totalDecided = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.winsMG2 + mg1Stats.lossesMG1 + mg1Stats.lossesMG2 + mg1Stats.lossesDirect;
+  const wins = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.winsMG2;
+  const losses = mg1Stats.lossesMG1 + mg1Stats.lossesMG2 + mg1Stats.lossesDirect;
   const winRate = totalDecided > 0 ? (wins / totalDecided) * 100 : 0;
 
   let consecutiveLosses = 0;
@@ -305,6 +328,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const nextCandleClose = Math.ceil(now / intervalMs) * intervalMs;
   const entryTime = new Date(nextCandleClose - 1000);
   const martingaleTime = consecutiveLosses >= 1 ? new Date(nextCandleClose + intervalMs - 1000) : null;
+
+  // MG2 stop: if any LOSS_MG2 in session, stop for the day
+  const mg2StopTriggered = mg1Stats.lossesMG2 > 0;
 
   return {
     currentSignal,
@@ -323,5 +349,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     sessionHistory,
     commitOpportunity,
     dataSourceLabel,
+    mg2StopTriggered,
   };
 }

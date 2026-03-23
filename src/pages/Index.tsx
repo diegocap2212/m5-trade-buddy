@@ -32,7 +32,7 @@ const Index = () => {
     setSoundMuted(next);
     setMuted(next);
   };
-  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity, dataSourceLabel } =
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity, dataSourceLabel, mg2StopTriggered } =
     useTradingEngine(selectedAsset, timeframe);
   const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
 
@@ -167,6 +167,7 @@ const Index = () => {
                 lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
                 capital={capital}
                 onCapitalChange={setCapital}
+                mg2StopTriggered={mg2StopTriggered}
               />
             )}
             <SignalHistory

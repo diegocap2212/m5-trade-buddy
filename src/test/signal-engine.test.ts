@@ -28,7 +28,6 @@ describe('analyzeMarket', () => {
   });
 
   it('returns WAIT for non-extreme conditions', () => {
-    // Stable market should produce WAIT
     const candles = makeCandles(30, 100);
     const result = analyzeMarket(candles, 'BTC/USD');
     expect(result).not.toBeNull();
@@ -37,8 +36,8 @@ describe('analyzeMarket', () => {
 });
 
 describe('backtestCandles', () => {
-  it('returns empty for fewer than 23 candles', () => {
-    const candles = makeCandles(20);
+  it('returns empty for fewer than 24 candles', () => {
+    const candles = makeCandles(22);
     const result = backtestCandles(candles, 'BTC/USD');
     expect(result.signals).toHaveLength(0);
   });
@@ -47,7 +46,16 @@ describe('backtestCandles', () => {
     const candles = makeCandles(200);
     const result = backtestCandles(candles, 'BTC/USD');
     expect(result.stats).toBeDefined();
-    expect(result.stats.winsDirect + result.stats.winsMG1 + result.stats.lossesMG1 + result.stats.lossesDirect)
+    expect(result.stats.winsDirect + result.stats.winsMG1 + result.stats.winsMG2 + result.stats.lossesMG1 + result.stats.lossesMG2 + result.stats.lossesDirect)
       .toBe(result.signals.length);
+  });
+
+  it('stats include MG2 fields', () => {
+    const candles = makeCandles(200);
+    const result = backtestCandles(candles, 'BTC/USD');
+    expect(result.stats).toHaveProperty('winsMG2');
+    expect(result.stats).toHaveProperty('lossesMG2');
+    expect(typeof result.stats.winsMG2).toBe('number');
+    expect(typeof result.stats.lossesMG2).toBe('number');
   });
 });

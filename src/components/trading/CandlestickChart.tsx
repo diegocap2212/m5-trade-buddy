@@ -70,12 +70,20 @@ const MARKER_CONFIG = {
     put:  { shape: 'arrowDown' as const, color: '#00e676', text: '🎯 WIN' },
   },
   WIN_MG1: {
-    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚡ MG WIN' },
-    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚡ MG WIN' },
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚡ MG1 WIN' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚡ MG1 WIN' },
+  },
+  WIN_MG2: {
+    call: { shape: 'arrowUp' as const, color: '#ff6d00', text: '🔥 MG2 WIN' },
+    put:  { shape: 'arrowDown' as const, color: '#ff6d00', text: '🔥 MG2 WIN' },
   },
   LOSS_MG1: {
-    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 MG LOSS' },
-    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 MG LOSS' },
+    call: { shape: 'arrowUp' as const, color: '#ffab00', text: '⚠️ MG1→MG2' },
+    put:  { shape: 'arrowDown' as const, color: '#ffab00', text: '⚠️ MG1→MG2' },
+  },
+  LOSS_MG2: {
+    call: { shape: 'arrowUp' as const, color: '#ff1744', text: '💀 MG2 LOSS' },
+    put:  { shape: 'arrowDown' as const, color: '#ff1744', text: '💀 MG2 LOSS' },
   },
   LOSS_DIRECT: {
     call: { shape: 'arrowUp' as const, color: '#ff1744', text: '✗ LOSS' },
@@ -490,7 +498,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
           </span>
           <span className="ml-2 flex items-center gap-2 border-l border-border pl-2">
             <span>🎯 Win</span>
-            <span>⚡ MG</span>
+            <span>⚡ MG1</span>
+            <span>🔥 MG2</span>
             <span>💀 Loss</span>
           </span>
         </div>

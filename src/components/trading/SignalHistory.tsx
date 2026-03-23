@@ -16,7 +16,9 @@ interface SignalHistoryProps {
 const detailConfig: Record<ResultDetail, { label: string; icon: React.ElementType; className: string }> = {
   WIN_DIRECT: { label: 'Win', icon: TrendingUp, className: 'bg-win/15 text-win border-win/30' },
   WIN_MG1: { label: 'MG1 ✓', icon: Shield, className: 'bg-pending/15 text-pending border-pending/30' },
-  LOSS_MG1: { label: 'MG1 ✗', icon: ShieldAlert, className: 'bg-loss/15 text-loss border-loss/30' },
+  WIN_MG2: { label: 'MG2 ✓', icon: Shield, className: 'bg-[#ff6d00]/15 text-[#ff6d00] border-[#ff6d00]/30' },
+  LOSS_MG1: { label: 'MG1 ✗', icon: ShieldAlert, className: 'bg-pending/15 text-pending border-pending/30' },
+  LOSS_MG2: { label: 'MG2 ✗', icon: ShieldAlert, className: 'bg-loss/15 text-loss border-loss/30' },
   LOSS_DIRECT: { label: 'Loss', icon: TrendingDown, className: 'bg-loss/15 text-loss border-loss/30' },
 };
 

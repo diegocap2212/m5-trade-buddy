@@ -43,7 +43,6 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
   const price = candles[candles.length - 1].close;
 
-  // Indicators (informational)
   const ema200 = getLastEMA(candles, Math.min(200, candles.length));
   let ema200Bias: MacroBias = 'NEUTRAL';
   if (price > ema200 * 1.001) ema200Bias = 'BULL';
@@ -57,7 +56,6 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
   const stoch = calculateStochastic(candles, 5, 3);
   const pattern = detectCandlePatterns(candles);
 
-  // --- Exhaustion Reversal Logic ---
   const confluences: string[] = [];
   let direction: SignalDirection = 'WAIT';
   let confidence = 0;
@@ -98,7 +96,6 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
     if (pattern && !pattern.bullish) confluences.push(`Padrão: ${pattern.name}`);
   }
 
-  // Filter: require high confidence AND a clear candle pattern
   const hasPattern = pattern !== null;
   if (direction !== 'WAIT' && (confidence < 85 || !hasPattern)) {
     direction = 'WAIT';
@@ -131,25 +128,24 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
 export interface BacktestResult {
   signals: import('./trading-types').TradingSignal[];
-  stats: { winsDirect: number; winsMG1: number; lossesMG1: number; lossesDirect: number };
+  stats: { winsDirect: number; winsMG1: number; winsMG2: number; lossesMG1: number; lossesMG2: number; lossesDirect: number };
 }
 
 /**
  * Run the exhaustion reversal strategy on historical candles.
- * For each candle i (from 20 to length-3), run analyzeMarket.
- * Validate with candle i+1 (direct) and i+2 (MG1).
+ * For each candle i (from 20 to length-4), run analyzeMarket.
+ * Validate with candle i+1 (direct), i+2 (MG1), i+3 (MG2).
  */
 export function backtestCandles(candles: CandleData[], asset: string): BacktestResult {
   const signals: import('./trading-types').TradingSignal[] = [];
-  const stats = { winsDirect: 0, winsMG1: 0, lossesMG1: 0, lossesDirect: 0 };
+  const stats = { winsDirect: 0, winsMG1: 0, winsMG2: 0, lossesMG1: 0, lossesMG2: 0, lossesDirect: 0 };
 
-  if (candles.length < 23) return { signals, stats };
+  if (candles.length < 24) return { signals, stats };
 
-  // Cooldown: after a signal, skip at least 3 candles to avoid overlap
-  // (1 entry candle + 1 validation + 1 MG1 = 3 candles occupied)
+  // Cooldown: after a signal, skip at least 4 candles (entry + 3 validation candles)
   let cooldownUntil = 0;
 
-  for (let i = 20; i < candles.length - 2; i++) {
+  for (let i = 20; i < candles.length - 3; i++) {
     if (i < cooldownUntil) continue;
 
     const slice = candles.slice(0, i + 1);
@@ -159,6 +155,7 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
     const entryPrice = analysis.price;
     const nextCandle = candles[i + 1];
     const mg1Candle = candles[i + 2];
+    const mg2Candle = candles[i + 3];
 
     const isDirectWin = analysis.direction === 'CALL'
       ? nextCandle.close > entryPrice
@@ -166,12 +163,15 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
 
     let result: 'WIN' | 'LOSS';
     let resultDetail: import('./trading-types').ResultDetail;
+    let resolvedCandleIndex: number;
 
     if (isDirectWin) {
       result = 'WIN';
       resultDetail = 'WIN_DIRECT';
       stats.winsDirect++;
+      resolvedCandleIndex = i + 1;
     } else {
+      // MG1: re-enter at nextCandle.close
       const isMG1Win = analysis.direction === 'CALL'
         ? mg1Candle.close > nextCandle.close
         : mg1Candle.close < nextCandle.close;
@@ -180,17 +180,30 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
         result = 'WIN';
         resultDetail = 'WIN_MG1';
         stats.winsMG1++;
+        resolvedCandleIndex = i + 2;
       } else {
-        result = 'LOSS';
-        resultDetail = 'LOSS_MG1';
-        stats.lossesMG1++;
+        // MG2: re-enter at mg1Candle.close
+        const isMG2Win = analysis.direction === 'CALL'
+          ? mg2Candle.close > mg1Candle.close
+          : mg2Candle.close < mg1Candle.close;
+
+        if (isMG2Win) {
+          result = 'WIN';
+          resultDetail = 'WIN_MG2';
+          stats.winsMG2++;
+          resolvedCandleIndex = i + 3;
+        } else {
+          result = 'LOSS';
+          resultDetail = 'LOSS_MG2';
+          stats.lossesMG2++;
+          resolvedCandleIndex = i + 3;
+        }
       }
     }
 
-    // Set cooldown: skip next 3 candles (entry + validation + MG1)
-    cooldownUntil = i + 3;
+    // Set cooldown: skip next 4 candles (entry + 3 validation)
+    cooldownUntil = i + 4;
 
-    const resolvedCandleIndex = resultDetail === 'WIN_DIRECT' ? i + 1 : i + 2;
     signals.push({
       id: crypto.randomUUID(),
       asset,
