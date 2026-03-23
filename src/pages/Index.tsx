@@ -167,6 +167,7 @@ const Index = () => {
                 lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
                 capital={capital}
                 onCapitalChange={setCapital}
+                mg2StopTriggered={mg2StopTriggered}
               />
             )}
             <SignalHistory

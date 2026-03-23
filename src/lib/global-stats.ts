@@ -4,7 +4,7 @@ const STORAGE_KEY = 'trading_global_results';
 const MAX_RECORDS = 500;
 
 export interface GlobalResult {
-  timestamp: number; // epoch ms
+  timestamp: number;
   resultDetail: ResultDetail;
   asset: string;
   timeframe: Timeframe;
@@ -25,7 +25,6 @@ function save(results: GlobalResult[]) {
 
 export function recordResult(detail: ResultDetail, asset: string, timeframe: Timeframe) {
   const results = load();
-  // Dedup: avoid recording if a result with same asset in the last 5 seconds exists
   const now = Date.now();
   const isDupe = results.some(r => r.asset === asset && r.resultDetail === detail && Math.abs(r.timestamp - now) < 5000);
   if (isDupe) return;
@@ -81,19 +80,22 @@ export interface PeriodStats {
   winRateWithoutMG: number;
   winsDirect: number;
   winsMG1: number;
+  winsMG2: number;
 }
 
 function calcStats(results: GlobalResult[]): PeriodStats {
-  let winsDirect = 0, winsMG1 = 0, lossesMG1 = 0, lossesDirect = 0;
+  let winsDirect = 0, winsMG1 = 0, winsMG2 = 0, lossesMG1 = 0, lossesMG2 = 0, lossesDirect = 0;
   for (const r of results) {
     if (r.resultDetail === 'WIN_DIRECT') winsDirect++;
     else if (r.resultDetail === 'WIN_MG1') winsMG1++;
+    else if (r.resultDetail === 'WIN_MG2') winsMG2++;
     else if (r.resultDetail === 'LOSS_MG1') lossesMG1++;
+    else if (r.resultDetail === 'LOSS_MG2') lossesMG2++;
     else if (r.resultDetail === 'LOSS_DIRECT') lossesDirect++;
   }
-  const total = winsDirect + winsMG1 + lossesMG1 + lossesDirect;
-  const wins = winsDirect + winsMG1;
-  const losses = lossesMG1 + lossesDirect;
+  const total = winsDirect + winsMG1 + winsMG2 + lossesMG1 + lossesMG2 + lossesDirect;
+  const wins = winsDirect + winsMG1 + winsMG2;
+  const losses = lossesMG1 + lossesMG2 + lossesDirect;
   const directOnly = winsDirect + lossesDirect;
   return {
     total,
@@ -103,6 +105,7 @@ function calcStats(results: GlobalResult[]): PeriodStats {
     winRateWithoutMG: directOnly > 0 ? (winsDirect / directOnly) * 100 : 0,
     winsDirect,
     winsMG1,
+    winsMG2,
   };
 }
 

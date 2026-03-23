@@ -498,7 +498,8 @@ const CandlestickChart = ({ candles, currentSignal, signalHistory = [], entryTim
           </span>
           <span className="ml-2 flex items-center gap-2 border-l border-border pl-2">
             <span>🎯 Win</span>
-            <span>⚡ MG</span>
+            <span>⚡ MG1</span>
+            <span>🔥 MG2</span>
             <span>💀 Loss</span>
           </span>
         </div>
