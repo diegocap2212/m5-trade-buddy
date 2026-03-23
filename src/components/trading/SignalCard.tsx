@@ -81,6 +81,12 @@ const SignalCard = ({
   return (
     <Card className={`${config.bgClass} ${config.borderClass} ${config.glowClass} border-2 transition-all duration-500`}>
       <CardContent className="p-6 flex flex-col items-center gap-4">
+        {/* MG Phase Banner */}
+        {phaseLabel && (
+          <div className="w-full text-center py-2 rounded-lg bg-pending/20 border border-pending/40 animate-pulse">
+            <span className="font-mono text-sm font-bold text-pending">{phaseLabel}</span>
+          </div>
+        )}
         {/* Macro Bias Badge */}
         <div className="w-full flex items-center justify-between">
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${bias.bg}`}>
