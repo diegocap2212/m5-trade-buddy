@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Shield, AlertTriangle, DollarSign, Ban, RefreshCw, TrendingUp, Flame } from 'lucide-react';
+import { Shield, AlertTriangle, DollarSign, Ban, RefreshCw, TrendingUp, Flame, Lock } from 'lucide-react';
 import { CRYPTO_ASSETS } from '@/lib/trading-types';
 import { Progress } from '@/components/ui/progress';
 
@@ -12,7 +12,12 @@ interface RiskManagerProps {
   lastSignalResult?: 'WIN' | 'LOSS' | 'PENDING';
   capital: number;
   onCapitalChange: (value: number) => void;
-  mg2StopTriggered?: boolean;
+  /** Feature 4: bank-based daily stop */
+  dailyStopTriggered?: boolean;
+  dailyLossPercent?: number;
+  maxDailyLossPercent?: number;
+  /** Feature 3: whether active signal allows MG2 */
+  mgAllowed?: boolean;
 }
 
 const RiskManager = ({
@@ -23,7 +28,10 @@ const RiskManager = ({
   lastSignalResult,
   capital,
   onCapitalChange,
-  mg2StopTriggered = false,
+  dailyStopTriggered = false,
+  dailyLossPercent = 0,
+  maxDailyLossPercent = 5.0,
+  mgAllowed = true,
 }: RiskManagerProps) => {
   const asset = CRYPTO_ASSETS.find(a => a.pair === selectedAsset);
   const payout = asset?.payout || 85;
@@ -37,8 +45,15 @@ const RiskManager = ({
   const currentEntry = isMG2 ? mg2Entry : isMG1 ? mg1Entry : baseEntry;
   const totalCycleRisk = baseEntry + mg1Entry + mg2Entry;
   const cycleRiskPercent = capital > 0 ? (totalCycleRisk / capital) * 100 : 0;
-  const stopLoss = consecutiveLosses >= 3 || mg2StopTriggered;
+  const stopLoss = consecutiveLosses >= 3 || dailyStopTriggered;
   const alert = stopLoss;
+  // Daily loss progress bar colour
+  const dailyLossFill = maxDailyLossPercent > 0 ? Math.min((dailyLossPercent / maxDailyLossPercent) * 100, 100) : 0;
+  const dailyBarColor = dailyLossPercent < maxDailyLossPercent * 0.5
+    ? 'bg-emerald-500'
+    : dailyLossPercent < maxDailyLossPercent * 0.8
+    ? 'bg-amber-400'
+    : 'bg-[hsl(var(--loss))]';
 
   // Phase for progress bar
   const phase = isMG2 ? 2 : isMG1 ? 1 : 0;
@@ -91,26 +106,49 @@ const RiskManager = ({
           </div>
           <div className="flex gap-1">
             {[
-              { label: 'BASE', value: baseEntry, active: phase >= 0 },
-              { label: 'MG1', value: mg1Entry, active: phase >= 1 },
-              { label: 'MG2', value: mg2Entry, active: phase >= 2 },
+              { label: 'BASE', value: baseEntry, active: phase >= 0, locked: false },
+              { label: 'MG1',  value: mg1Entry,  active: phase >= 1, locked: false },
+              { label: 'MG2',  value: mg2Entry,  active: phase >= 2, locked: !mgAllowed },
             ].map((step, i) => (
               <div key={step.label} className="flex-1">
                 <div className={`h-1.5 rounded-full transition-colors ${
-                  i === phase
+                  step.locked
+                    ? 'bg-muted-foreground/20'
+                    : i === phase
                     ? i === 2 ? 'bg-[hsl(var(--loss))]' : i === 1 ? 'bg-[hsl(var(--pending))]' : 'bg-primary'
                     : step.active ? 'bg-muted-foreground/40' : 'bg-secondary'
                 }`} />
                 <div className="flex justify-between mt-0.5">
-                  <span className={`text-[8px] font-mono ${i === phase ? phaseColor : 'text-muted-foreground/50'}`}>
+                  <span className={`text-[8px] font-mono flex items-center gap-0.5 ${
+                    step.locked ? 'text-muted-foreground/30' : i === phase ? phaseColor : 'text-muted-foreground/50'
+                  }`}>
+                    {step.locked && <Lock className="h-2 w-2" />}
                     {step.label}
                   </span>
-                  <span className={`text-[8px] font-mono ${i === phase ? phaseColor : 'text-muted-foreground/50'}`}>
+                  <span className={`text-[8px] font-mono ${
+                    step.locked ? 'text-muted-foreground/30' : i === phase ? phaseColor : 'text-muted-foreground/50'
+                  }`}>
                     ${step.value.toFixed(0)}
                   </span>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Perda diária acumulada */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[10px] font-mono">
+            <span className="text-muted-foreground">Perda do dia</span>
+            <span className={dailyLossPercent >= maxDailyLossPercent * 0.8 ? 'text-[hsl(var(--loss))]' : dailyLossPercent >= maxDailyLossPercent * 0.5 ? 'text-amber-400' : 'text-muted-foreground'}>
+              {dailyLossPercent.toFixed(1)}% / {maxDailyLossPercent.toFixed(1)}%
+            </span>
+          </div>
+          <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+            <div
+              className={`h-1.5 rounded-full transition-all duration-500 ${dailyBarColor}`}
+              style={{ width: `${dailyLossFill}%` }}
+            />
           </div>
         </div>
 
@@ -131,12 +169,12 @@ const RiskManager = ({
         </div>
 
         {/* Alerta único relevante */}
-        {mg2StopTriggered ? (
+        {dailyStopTriggered ? (
           <div className="flex items-center gap-2 bg-[hsl(var(--loss))]/10 border border-[hsl(var(--loss))]/30 rounded-lg p-2.5">
             <Ban className="h-4 w-4 text-[hsl(var(--loss))] shrink-0" />
             <div>
-              <p className="text-xs text-[hsl(var(--loss))] font-mono font-bold">🛑 STOP DO DIA</p>
-              <p className="text-[9px] text-[hsl(var(--loss))]/80 font-mono">MG2 falhou. Não opere mais hoje.</p>
+              <p className="text-xs text-[hsl(var(--loss))] font-mono font-bold">🛑 STOP DO DIA ({dailyLossPercent.toFixed(1)}%)</p>
+              <p className="text-[9px] text-[hsl(var(--loss))]/80 font-mono">Limite de {maxDailyLossPercent}% atingido. Não opere mais hoje.</p>
             </div>
           </div>
         ) : stopLoss ? (

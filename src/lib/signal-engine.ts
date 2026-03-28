@@ -29,17 +29,46 @@ export interface SignalAnalysis {
   confluences: string[];
 }
 
+// ─── Session Warm-up Filter ────────────────────────────────────────────────
+// Block all live signals for the first WARMUP_MINUTES after each session opens.
+// Prevents losses from irrational volatility at session open.
+const SESSION_OPENS_BRT: { hour: number; minute: number; name: string }[] = [
+  { hour: 21, minute: 0, name: 'Tóquio' },
+  { hour: 4,  minute: 0, name: 'Londres' },
+  { hour: 10, minute: 0, name: 'São Paulo/NY' },
+];
+const WARMUP_MINUTES = 15;
+
+function isInSessionWarmup(now: Date = new Date()): boolean {
+  // Convert to BRT (UTC-3)
+  const brtMs = now.getTime() - 3 * 60 * 60 * 1000;
+  const brt = new Date(brtMs);
+  const totalBrtMinutes = brt.getUTCHours() * 60 + brt.getUTCMinutes();
+  for (const session of SESSION_OPENS_BRT) {
+    const sessionStart = session.hour * 60 + session.minute;
+    // Handle midnight wrap (e.g. Tóquio at 21:00)
+    const minutesSince = (totalBrtMinutes - sessionStart + 1440) % 1440;
+    if (minutesSince < WARMUP_MINUTES) return true;
+  }
+  return false;
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 /**
  * Exhaustion Reversal Strategy
- * 
+ *
  * CALL: price closes below lower Bollinger (2.0 dev) AND RSI < 30
  * PUT:  price closes above upper Bollinger (2.0 dev) AND RSI > 70
- * 
+ *
  * Confidence is calculated from how deep the price penetrates the band
  * and how extreme the RSI is. This produces rare but high-quality signals.
+ *
+ * @param skipWarmup - Set true in backtestCandles to bypass the warm-up guard.
  */
-export function analyzeMarket(candles: CandleData[], asset: string): SignalAnalysis | null {
+export function analyzeMarket(candles: CandleData[], asset: string, skipWarmup = false): SignalAnalysis | null {
   if (candles.length < 20) return null;
+  // Session warm-up guard — live only (skipWarmup=true bypasses for backtest)
+  if (!skipWarmup && isInSessionWarmup()) return null;
 
   const price = candles[candles.length - 1].close;
 
@@ -130,7 +159,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
 
   return {
     direction,
-    confidence,
+    confidence: Math.round(confidence * 100) / 100,
     price,
     support,
     resistance,
@@ -169,7 +198,7 @@ export function backtestCandles(candles: CandleData[], asset: string): BacktestR
     if (i < cooldownUntil) continue;
 
     const slice = candles.slice(0, i + 1);
-    const analysis = analyzeMarket(slice, asset);
+    const analysis = analyzeMarket(slice, asset, true); // skipWarmup=true for backtest
     if (!analysis || analysis.direction === 'WAIT') continue;
 
     const entryPrice = analysis.price;

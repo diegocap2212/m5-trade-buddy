@@ -24,6 +24,8 @@ export interface TradingSignal {
   confluences?: string[];
   resultDetail?: ResultDetail;
   resolvedTimestamp?: Date;
+  /** true when original signal confidence >= MG_CONFIDENCE_THRESHOLD — MG2 escalation allowed */
+  mgAllowed?: boolean;
 }
 
 export interface CandleData {

@@ -32,8 +32,8 @@ const Index = () => {
     setSoundMuted(next);
     setMuted(next);
   };
-  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity, dataSourceLabel, mg2StopTriggered } =
-    useTradingEngine(selectedAsset, timeframe);
+  const { currentSignal, signalHistory, candles, connected, connectionStatus, wins, losses, totalSignals, winRate, consecutiveLosses, entryTime, martingaleTime, mg1Stats, commitOpportunity, dataSourceLabel, dailyStopTriggered, dailyLossPercent, maxDailyLossPercent } =
+    useTradingEngine(selectedAsset, timeframe, capital);
   const { opportunities, scanning, dismissOpportunity } = useMultiScanner(selectedAsset, timeframe);
 
   // Ref to hold the pending commit so we can apply it after asset switch
@@ -167,7 +167,10 @@ const Index = () => {
                 lastSignalResult={signalHistory.length > 0 ? signalHistory[0].result : undefined}
                 capital={capital}
                 onCapitalChange={setCapital}
-                mg2StopTriggered={mg2StopTriggered}
+                dailyStopTriggered={dailyStopTriggered}
+                dailyLossPercent={dailyLossPercent}
+                maxDailyLossPercent={maxDailyLossPercent}
+                mgAllowed={currentSignal?.mgAllowed ?? true}
               />
             )}
             <SignalHistory

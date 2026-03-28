@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TradingSignal, CandleData, Timeframe, ResultDetail } from '@/lib/trading-types';
+import { CRYPTO_ASSETS } from '@/lib/trading-types';
 import { analyzeMarket, backtestCandles } from '@/lib/signal-engine';
 import { useMarketData } from './use-market-data';
 import { playCallAlert, playPutAlert, playWinSound, playLossSound, playMG1Alert, playMG2Alert } from '@/lib/sound-alerts';
 import { useSessionHistory } from './use-session-history';
 import { recordResult, recordBacktestResults } from '@/lib/global-stats';
 import type { ScannerOpportunity } from './use-multi-scanner';
+
+// ─── Feature constants ───────────────────────────────────────────────────────
+/** Minimum signal confidence to allow MG2 escalation */
+const MG_CONFIDENCE_THRESHOLD = 88;
+/** Maximum cumulative daily loss as % of capital before day stop */
+const MAX_DAILY_LOSS_PERCENT = 5.0;
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface MG1Stats {
   winsDirect: number;
@@ -40,10 +48,51 @@ function getClosedCandles(candles: CandleData[], timeframe: Timeframe): CandleDa
   return candles;
 }
 
-export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
+export function useTradingEngine(selectedAsset: string, timeframe: Timeframe, capital: number = 1000) {
   const [currentSignal, setCurrentSignal] = useState<TradingSignal | null>(null);
   const [signalHistory, setSignalHistory] = useState<TradingSignal[]>([]);
   const [mg1Stats, setMG1Stats] = useState<MG1Stats>({ winsDirect: 0, winsMG1: 0, winsMG2: 0, lossesMG1: 0, lossesMG2: 0, lossesDirect: 0 });
+
+  // ── Feature 4: Bank-based daily stop ──
+  const capitalRef = useRef(capital);
+  capitalRef.current = capital;
+  const [dailyLossPercent, setDailyLossPercent] = useState(0);
+  const [dailyStopTriggered, setDailyStopTriggered] = useState(false);
+  const dailyLossRef = useRef(0);
+  const dailyResetDate = useRef(new Date().toDateString());
+
+  // Reset daily counters at midnight
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const today = new Date().toDateString();
+      if (today !== dailyResetDate.current) {
+        dailyResetDate.current = today;
+        dailyLossRef.current = 0;
+        setDailyLossPercent(0);
+        setDailyStopTriggered(false);
+      }
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  /** Accumulate a realised loss into the daily counter */
+  const addDailyLoss = useCallback((type: 'LOSS_MG1' | 'LOSS_MG2') => {
+    const cap = capitalRef.current;
+    if (cap <= 0) return;
+    const asset = CRYPTO_ASSETS.find(a => a.pair === selectedAsset);
+    const payout = (asset?.payout ?? 85) / 100;
+    const base = cap * 0.02;
+    const mg1 = (base * (1 + payout)) / payout;
+    const mg2 = ((base + mg1) * (1 + payout)) / payout;
+    const lost = type === 'LOSS_MG1' ? base + mg1 : base + mg1 + mg2;
+    const lostPct = (lost / cap) * 100;
+    dailyLossRef.current += lostPct;
+    setDailyLossPercent(Math.round(dailyLossRef.current * 100) / 100);
+    if (dailyLossRef.current >= MAX_DAILY_LOSS_PERCENT) {
+      setDailyStopTriggered(true);
+    }
+  }, [selectedAsset]);
+  // ────────────────────────────────────────
 
   const lockedCandleTimestamp = useRef<number | null>(null);
   const pendingValidation = useRef<PendingValidation | null>(null);
@@ -88,7 +137,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
    * Commit an external opportunity as a PENDING signal.
    */
   const commitOpportunity = useCallback((opp: ScannerOpportunity) => {
-    if (pendingValidation.current) return;
+    if (pendingValidation.current || dailyStopTriggered) return;
 
     const signalId = crypto.randomUUID();
     const signal: TradingSignal = {
@@ -107,6 +156,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       stochK: opp.analysis.stochK,
       stochD: opp.analysis.stochD,
       confluences: opp.analysis.confluences,
+      mgAllowed: opp.analysis.confidence >= MG_CONFIDENCE_THRESHOLD,
     };
 
     setCurrentSignal(signal);
@@ -136,6 +186,8 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
 
     const analysis = analyzeMarket(closedCandles, selectedAsset);
     if (!analysis) return;
+
+    if (dailyStopTriggered) return; // Daily stop active — no new signals
 
     if (analysis.direction === 'WAIT' || pendingValidation.current) {
       if (analysis.direction === 'WAIT' && (!currentSignal || currentSignal.direction === 'WAIT')) {
@@ -179,6 +231,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
       stochK: analysis.stochK,
       stochD: analysis.stochD,
       confluences: analysis.confluences,
+      mgAllowed: analysis.confidence >= MG_CONFIDENCE_THRESHOLD,
     };
 
     setCurrentSignal(signal);
@@ -246,6 +299,16 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         recordResult('WIN_MG1', selectedAsset, timeframe);
         playWinSound();
         console.log(`[Engine] ⚡ WIN_MG1 for ${pv.signal.asset} ${pv.signal.direction} | mg1Entry=${mg1EntryPrice} close=${mg1Candle.close}`);
+      } else if (!pv.signal.mgAllowed) {
+        // ── MG Confidence Guard: signal confidence < 88% → stop at MG1, no MG2 ──
+        const updates = { result: 'LOSS' as const, resultDetail: 'LOSS_MG1' as ResultDetail, resolvedTimestamp: new Date(mg1Candle.timestamp) };
+        updateSignalById(pv.signal.id, updates);
+        setCurrentSignal(prev => prev?.id === pv.signal.id ? null : prev);
+        setMG1Stats(prev => ({ ...prev, lossesMG1: prev.lossesMG1 + 1 }));
+        recordResult('LOSS_MG1', selectedAsset, timeframe);
+        addDailyLoss('LOSS_MG1');
+        playLossSound();
+        console.log(`[Engine] 🔒 LOSS_MG1 final (MG2 bloqueado, conf<${MG_CONFIDENCE_THRESHOLD}%) for ${pv.signal.asset} ${pv.signal.direction}`);
       } else {
         // LOSS on MG1 → go to MG2
         pv.state = 'waiting_mg2';
@@ -279,6 +342,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
         setCurrentSignal(prev => prev?.id === pv.signal.id ? null : prev);
         setMG1Stats(prev => ({ ...prev, lossesMG2: prev.lossesMG2 + 1 }));
         recordResult('LOSS_MG2', selectedAsset, timeframe);
+        addDailyLoss('LOSS_MG2');
         playLossSound();
         console.log(`[Engine] 💀 LOSS_MG2 for ${pv.signal.asset} ${pv.signal.direction} | mg2Entry=${mg2EntryPrice} close=${mg2Candle.close}`);
       }
@@ -305,9 +369,6 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
   const entryTime = new Date(nextCandleClose - 1000);
   const martingaleTime = consecutiveLosses >= 1 ? new Date(nextCandleClose + intervalMs - 1000) : null;
 
-  // MG2 stop: if any LOSS_MG2 in session, stop for the day
-  const mg2StopTriggered = mg1Stats.lossesMG2 > 0;
-
   return {
     currentSignal,
     signalHistory,
@@ -325,6 +386,9 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     sessionHistory,
     commitOpportunity,
     dataSourceLabel,
-    mg2StopTriggered,
+    // Feature 4: bank-based daily stop
+    dailyLossPercent,
+    maxDailyLossPercent: MAX_DAILY_LOSS_PERCENT,
+    dailyStopTriggered,
   };
 }
