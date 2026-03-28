@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGlobalStats } from '@/hooks/use-global-stats';
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import type { PeriodStats } from '@/lib/global-stats';
@@ -43,7 +44,9 @@ function PeriodColumn({ label, stats, compareStats }: { label: string; stats: Pe
 }
 
 export default function GlobalAssertiveness({ refreshTrigger }: Props) {
-  const { today, week, month } = useGlobalStats(refreshTrigger);
+  const [showBacktest, setShowBacktest] = useState(false);
+  const source = showBacktest ? 'backtest' : 'live';
+  const { today, week, month } = useGlobalStats(refreshTrigger, source);
   
   const hasData = today.total > 0 || week.total > 0 || month.total > 0;
 
@@ -54,6 +57,16 @@ export default function GlobalAssertiveness({ refreshTrigger }: Props) {
         <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
           Assertividade Global
         </span>
+        <button
+          onClick={() => setShowBacktest(!showBacktest)}
+          className={`ml-2 font-mono text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+            showBacktest 
+              ? 'bg-primary/20 border-primary/40 text-primary' 
+              : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {showBacktest ? 'BACKTEST' : 'LIVE'}
+        </button>
       </div>
       
       {hasData ? (
@@ -64,7 +77,7 @@ export default function GlobalAssertiveness({ refreshTrigger }: Props) {
         </div>
       ) : (
         <p className="text-center font-mono text-[10px] text-muted-foreground/50 py-1">
-          Nenhum sinal registrado ainda
+          {showBacktest ? 'Nenhum backtest registrado' : 'Nenhum sinal live registrado ainda'}
         </p>
       )}
     </div>

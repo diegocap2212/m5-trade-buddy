@@ -8,12 +8,16 @@ export interface GlobalResult {
   resultDetail: ResultDetail;
   asset: string;
   timeframe: Timeframe;
+  source: 'live' | 'backtest';
 }
 
 function load(): GlobalResult[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as GlobalResult[];
+    // Migrate old records without source field — treat as backtest (unknown origin)
+    return parsed.map(r => ({ ...r, source: r.source || 'backtest' }));
   } catch {
     return [];
   }
@@ -28,7 +32,7 @@ export function recordResult(detail: ResultDetail, asset: string, timeframe: Tim
   const now = Date.now();
   const isDupe = results.some(r => r.asset === asset && r.resultDetail === detail && Math.abs(r.timestamp - now) < 5000);
   if (isDupe) return;
-  results.push({ timestamp: now, resultDetail: detail, asset, timeframe });
+  results.push({ timestamp: now, resultDetail: detail, asset, timeframe, source: 'live' });
   save(results);
 }
 
@@ -41,15 +45,17 @@ export function recordBacktestResults(signals: Array<{ timestamp: Date; resultDe
     const ts = s.timestamp.getTime();
     const key = `${ts}_${s.asset}`;
     if (existingKeys.has(key)) continue;
-    results.push({ timestamp: ts, resultDetail: s.resultDetail, asset: s.asset, timeframe });
+    results.push({ timestamp: ts, resultDetail: s.resultDetail, asset: s.asset, timeframe, source: 'backtest' });
     existingKeys.add(key);
     added++;
   }
   if (added > 0) save(results);
 }
 
-export function getResultsSince(sinceMs: number): GlobalResult[] {
-  return load().filter(r => r.timestamp >= sinceMs);
+export function getResultsSince(sinceMs: number, sourceFilter?: 'live' | 'backtest'): GlobalResult[] {
+  const all = load().filter(r => r.timestamp >= sinceMs);
+  if (sourceFilter) return all.filter(r => r.source === sourceFilter);
+  return all;
 }
 
 function startOfToday(): number {
@@ -109,14 +115,14 @@ function calcStats(results: GlobalResult[]): PeriodStats {
   };
 }
 
-export function getTodayStats(): PeriodStats {
-  return calcStats(getResultsSince(startOfToday()));
+export function getTodayStats(source?: 'live' | 'backtest'): PeriodStats {
+  return calcStats(getResultsSince(startOfToday(), source));
 }
 
-export function getWeekStats(): PeriodStats {
-  return calcStats(getResultsSince(startOfWeek()));
+export function getWeekStats(source?: 'live' | 'backtest'): PeriodStats {
+  return calcStats(getResultsSince(startOfWeek(), source));
 }
 
-export function getMonthStats(): PeriodStats {
-  return calcStats(getResultsSince(startOfMonth()));
+export function getMonthStats(source?: 'live' | 'backtest'): PeriodStats {
+  return calcStats(getResultsSince(startOfMonth(), source));
 }
