@@ -286,31 +286,7 @@ export function useTradingEngine(selectedAsset: string, timeframe: Timeframe) {
     }
   }, [candles, timeframe, selectedAsset, updateSignalById]);
 
-  // Backtest
-  useEffect(() => {
-    if (candles.length >= 24 && (!backtestRan.current || backtestAssetRef.current !== selectedAsset)) {
-      backtestRan.current = true;
-      backtestAssetRef.current = selectedAsset;
-      const result = backtestCandles(candles, selectedAsset);
-      if (result.signals.length > 0) {
-        setSignalHistory(prev => {
-          const existingTimes = new Set(prev.map(s => s.timestamp.getTime()));
-          const newSignals = result.signals.filter(s => !existingTimes.has(s.timestamp.getTime()));
-          if (newSignals.length === 0) return prev;
-          return [...newSignals, ...prev].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 50);
-        });
-        setMG1Stats(prev => ({
-          winsDirect: prev.winsDirect + result.stats.winsDirect,
-          winsMG1: prev.winsMG1 + result.stats.winsMG1,
-          winsMG2: prev.winsMG2 + result.stats.winsMG2,
-          lossesMG1: prev.lossesMG1 + result.stats.lossesMG1,
-          lossesMG2: prev.lossesMG2 + result.stats.lossesMG2,
-          lossesDirect: prev.lossesDirect + result.stats.lossesDirect,
-        }));
-        recordBacktestResults(result.signals, timeframe);
-      }
-    }
-  }, [candles, selectedAsset]);
+  // Backtest removed from live engine — use dedicated Backtest page instead
 
   const totalDecided = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.winsMG2 + mg1Stats.lossesMG1 + mg1Stats.lossesMG2 + mg1Stats.lossesDirect;
   const wins = mg1Stats.winsDirect + mg1Stats.winsMG1 + mg1Stats.winsMG2;
