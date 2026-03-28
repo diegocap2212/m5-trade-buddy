@@ -69,7 +69,7 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
     direction = 'CALL';
     const bandPenetration = bb.lower > 0 ? ((bb.lower - price) / (atr || 1)) * 100 : 0;
     const rsiExtremity = (30 - rsi) / 30;
-    confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
+    confidence = Math.min(95, Math.max(55, 50 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço abaixo da Bollinger Inferior');
     confluences.push(`RSI Sobrevendido (${rsi.toFixed(1)})`);
@@ -77,14 +77,24 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
       confluences.push('Tendência macro de alta (EMA200)');
       confidence = Math.min(95, confidence + 5);
     }
-    if (stoch.k < 20) confluences.push('Stochastic sobrevendido');
-    if (pattern?.bullish) confluences.push(`Padrão: ${pattern.name}`);
+    if (stoch.k < 20) {
+      confluences.push('Stochastic sobrevendido');
+      confidence = Math.min(95, confidence + 5);
+    }
+    if (price < vwap) {
+      confluences.push('Preço abaixo do VWAP');
+      confidence = Math.min(95, confidence + 3);
+    }
+    if (pattern?.bullish) {
+      confluences.push(`Padrão: ${pattern.name}`);
+      confidence = Math.min(95, confidence + 8);
+    }
 
   } else if (aboveUpper && rsiOverbought) {
     direction = 'PUT';
     const bandPenetration = bb.upper > 0 ? ((price - bb.upper) / (atr || 1)) * 100 : 0;
     const rsiExtremity = (rsi - 70) / 30;
-    confidence = Math.min(95, Math.max(60, 55 + bandPenetration * 5 + rsiExtremity * 25));
+    confidence = Math.min(95, Math.max(55, 50 + bandPenetration * 5 + rsiExtremity * 25));
 
     confluences.push('Preço acima da Bollinger Superior');
     confluences.push(`RSI Sobrecomprado (${rsi.toFixed(1)})`);
@@ -92,12 +102,22 @@ export function analyzeMarket(candles: CandleData[], asset: string): SignalAnaly
       confluences.push('Tendência macro de baixa (EMA200)');
       confidence = Math.min(95, confidence + 5);
     }
-    if (stoch.k > 80) confluences.push('Stochastic sobrecomprado');
-    if (pattern && !pattern.bullish) confluences.push(`Padrão: ${pattern.name}`);
+    if (stoch.k > 80) {
+      confluences.push('Stochastic sobrecomprado');
+      confidence = Math.min(95, confidence + 5);
+    }
+    if (price > vwap) {
+      confluences.push('Preço acima do VWAP');
+      confidence = Math.min(95, confidence + 3);
+    }
+    if (pattern && !pattern.bullish) {
+      confluences.push(`Padrão: ${pattern.name}`);
+      confidence = Math.min(95, confidence + 8);
+    }
   }
 
-  const hasPattern = pattern !== null;
-  if (direction !== 'WAIT' && (confidence < 85 || !hasPattern)) {
+  // Confiança mínima de 70% — padrão de vela NÃO é obrigatório
+  if (direction !== 'WAIT' && confidence < 70) {
     direction = 'WAIT';
     confidence = 0;
     confluences.length = 0;
