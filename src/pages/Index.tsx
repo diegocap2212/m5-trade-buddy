@@ -13,7 +13,7 @@ import OpportunityBanner from '@/components/trading/OpportunityBanner';
 import { useTradingEngine } from '@/hooks/use-trading-engine';
 import { useMultiScanner } from '@/hooks/use-multi-scanner';
 import type { ScannerOpportunity } from '@/hooks/use-multi-scanner';
-import { Activity, Volume2, VolumeX, FileBarChart } from 'lucide-react';
+import { Activity, Volume2, VolumeX, FlaskConical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Timeframe } from '@/lib/trading-types';
 import { isMuted, setMuted } from '@/lib/sound-alerts';
